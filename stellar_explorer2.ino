@@ -1,0 +1,41 @@
+#include <Wire.h>
+#include "util.h"
+#include "SPI_C.h"
+#include "TinyScreenC.h"
+#include "render.h"
+
+void setup() {
+  Wire.begin();
+  TinyScreenC();
+
+  TinyScreenC_begin();
+
+  TinyScreenC_setBrightness(2);
+  _renderScreen.fontFormats[0] = &virtualDJ_5ptFontInfo;
+}
+
+void loop() {
+  // put your main code here, to run repeatedly:
+  int coffset = micros()/10000L;
+  //cheapRndSeed(coffset>>8,coffset&0xff00);
+
+  RenderScreen_drawCircle (10,40,(1+(cos(micros()/1000L * 0.002f)+1)*8)*18,0xff);
+  RenderScreen_drawCircle (18,40,1<<4,0xff);
+  RenderScreen_drawCircle (30,40,5<<4,0xff);
+  RenderScreen_drawCircle (60,40,(1+(sin(micros()/1000L * 0.002f)+1)*8)*32,0xff);
+  for (int x=0;x<96;x+=3) {
+    RenderScreen_drawRect (x,15 + sin(micros()/1000L * 0.001f+x*0.1f)*10 , 4,4,(x+coffset)>>3);
+  //  RenderScreen_drawRect (x,45 + sin(-micros()/1000L * 0.01f+x*0.1f)*10 , 6,6,(-x+coffset)>>3);
+  }
+  RenderScreen_drawText (0, 0, 0, "oh hay!", 0xf);
+  RenderScreen_flush();
+  
+  /*	long start =micros();
+  	TinyScreenC_drawLineC(cheapRnd(),cheapRnd(),cheapRnd(),cheapRnd(),cheapRnd());
+  	long t = micros()-start;
+  	TinyScreenC_setCursor(0,0);
+  	TinyScreenC_setFont(virtualDJ_5ptFontInfo);
+  	TinyScreenC_fontColor(0,0xff);
+  	char b[12];*/
+  //TinyScreenC_printCStr(int_to_dec(t,b));
+}
