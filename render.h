@@ -6,11 +6,15 @@ extern "C" {
 #define RENDERCOMMAND_TSTAR 3
 #define RENDERCOMMAND_TTEXT 4
 
+#define RENDERCOMMAND_COLORED 0x10
+#define RENDERCOMMAND_TEXTURED 0x20
+
 #define RENDERSCREEN_MAX_COMMANDS 64
 #define RENDERSCREEN_WIDTH 96
 #define RENDERSCREEN_HEIGHT 64
 
 #define RENDERSCREEN_TEXT_FORMAT_COUNT 1
+#define RENDERSCREEN_TEXTURE_COUNT 8
 
   
   typedef struct RenderCommand_s {
@@ -19,6 +23,7 @@ extern "C" {
       struct {
         // rect
         unsigned char x1, y1, w, y2;
+        char u;
       } rect;
       struct {
         // circle
@@ -38,6 +43,7 @@ extern "C" {
   } RenderCommand;
 
   typedef struct RenderScreen_s {
+    const ImageInclude *imageIncludes[RENDERSCREEN_TEXTURE_COUNT];
     const FONT_INFO *fontFormats[RENDERSCREEN_TEXT_FORMAT_COUNT];
     RenderCommand commands[RENDERSCREEN_MAX_COMMANDS];
     unsigned char commandCount;
@@ -45,15 +51,16 @@ extern "C" {
 
   static RenderScreen _renderScreen;
 
-  static void RenderScreen_drawRect (int x, int y, int w, int h, int color) {
-    if (_renderScreen.commandCount >= RENDERSCREEN_MAX_COMMANDS) return;
-    if (x>=RENDERSCREEN_WIDTH || y >= RENDERSCREEN_HEIGHT || w <= 0 || h <= 0) return;
+  static RenderCommand* RenderScreen_drawRect (int x, int y, int w, int h, int color) {
+    if (_renderScreen.commandCount >= RENDERSCREEN_MAX_COMMANDS) return 0;
+    if (x>=RENDERSCREEN_WIDTH || y >= RENDERSCREEN_HEIGHT || w <= 0 || h <= 0) return 0;
     int x2 = x+w;
     int y2 = y+h;
-    if (x2 <= 0 || y2 <= 0) return;
+    int u = 0;
+    if (x2 <= 0 || y2 <= 0) return 0;
     if (x2 > RENDERSCREEN_WIDTH) x2 = RENDERSCREEN_WIDTH;
     if (y2 > RENDERSCREEN_HEIGHT) y2 = RENDERSCREEN_HEIGHT;
-    if (x < 0) x = 0;
+    if (x < 0) u = -(x>>1), x = 0;
     if (y < 0) y = 0;
     RenderCommand *command = &_renderScreen.commands[_renderScreen.commandCount++];
     command->type = RENDERCOMMAND_TRECT;
@@ -62,6 +69,13 @@ extern "C" {
     command->rect.y1 = y;
     command->rect.w = x2-x;
     command->rect.y2 = y2;
+    command->rect.u = u;
+    return command;
+  }
+
+  static void RenderScreen_drawRectTextured (int x, int y, int w, int h, unsigned char imageId) {
+    RenderCommand *cmd = RenderScreen_drawRect(x,y,w,h,imageId);
+    if (cmd) cmd->type|=RENDERCOMMAND_TEXTURED;
   }
 
   static void RenderScreen_drawCircle (int x, int y, unsigned long r16, int color) {
@@ -131,13 +145,20 @@ extern "C" {
 
 
   static char RenderScreen_fillLine(RenderCommand *command,char y,unsigned char lineBuffer[RENDERSCREEN_WIDTH]) {
-    if (command->type == RENDERCOMMAND_TRECT) {
+    unsigned char t = command->type & 0xf;
+    unsigned char fill = command->type & 0xf0;
+    if (t == RENDERCOMMAND_TRECT) {
       if (y >= command->rect.y1 && y<command->rect.y2) {
-        memset(&lineBuffer[command->rect.x1],command->color,command->rect.w);
+        if (fill == 0) {
+          memset(&lineBuffer[command->rect.x1],command->color,command->rect.w);
+        } else if (fill == RENDERCOMMAND_TEXTURED) {
+          ImageInclude_readLineInto(_renderScreen.imageIncludes[command->color], lineBuffer, 
+            command->rect.x1, command->rect.x1+command->rect.w, y - command->rect.y1, command->rect.u);
+        }
       }
       return command->rect.y2 <= y;
     }
-    if (command->type == RENDERCOMMAND_TCIRCLE) {
+    if (t == RENDERCOMMAND_TCIRCLE) {
       char dy = y - command->circle.y;
       unsigned short dy2 = dy*dy;
       unsigned short r2 = command->circle.r2;
@@ -172,7 +193,7 @@ extern "C" {
       }
       return dy >= command->circle.r;
     }
-    if (command->type == RENDERCOMMAND_TTEXT) {
+    if (t == RENDERCOMMAND_TTEXT) {
       if (y < command->text.y) return 0;
       const FONT_INFO *fontInfo = _renderScreen.fontFormats[command->text.fontIndex];
       if (y >= command->text.y + fontInfo->height) return 1;
@@ -184,17 +205,18 @@ extern "C" {
 
 #define RENDERSCREEN_SLICE 15
   static char RenderScreen_onVLine(RenderCommand *command, char y) {
-    if (command->type == RENDERCOMMAND_TRECT) {
+    unsigned char t = command->type & 0xf;
+    if (t == RENDERCOMMAND_TRECT) {
       if (y + RENDERSCREEN_SLICE < command->rect.y1) return -1;
       if (y >= command->rect.y2) return 1;
       return 0;
     }
-    if (command->type == RENDERCOMMAND_TCIRCLE) {
+    if (t == RENDERCOMMAND_TCIRCLE) {
       if (y + RENDERSCREEN_SLICE < command->circle.y-command->circle.r - 1) return -1;
       if (y >= command->circle.y + command->circle.r + 1) return 1;
       return 0;
     }
-    if (command->type == RENDERCOMMAND_TTEXT) {
+    if (t == RENDERCOMMAND_TTEXT) {
       if (y < command->text.y) return -1;
       if (y >= command->text.y + _renderScreen.fontFormats[command->text.fontIndex]->height) return 1;
       return 0;
