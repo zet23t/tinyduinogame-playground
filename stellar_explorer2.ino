@@ -28,7 +28,8 @@ void loop() {
   RenderScreen_drawCircle (18,40,1<<4,0xff);
   RenderScreen_drawCircle (30,40,5<<4,0xff);
   RenderScreen_drawCircle (60,40,(1+(sin(micros()/1000L * 0.002f)+1)*8)*32,0xff);*/
-  RenderScreen_drawRectTextured(-50 + coffset % 200,8,46,48,0);
+  RenderScreen_drawRectTextured(-50 + (coffset+100) % 200,8,46,48,0);
+  RenderScreen_drawRectTextured(30,-50 + coffset % 200,46,48,0);
   for (int x=0;x<96;x+=5) {
     //RenderScreen_drawRect (x,15 + sin(micros()/1000L * 0.001f+x*0.1f)*10 , 4,4,(x+coffset)>>3);
     RenderScreen_drawRectTextured (x,15 + sin(micros()/1000L * 0.006f+x*0.1f)*10 , 8,8,1);

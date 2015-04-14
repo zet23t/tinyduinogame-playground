@@ -23,7 +23,7 @@ extern "C" {
       struct {
         // rect
         unsigned char x1, y1, w, y2;
-        char u;
+        char u,v;
       } rect;
       struct {
         // circle
@@ -56,12 +56,12 @@ extern "C" {
     if (x>=RENDERSCREEN_WIDTH || y >= RENDERSCREEN_HEIGHT || w <= 0 || h <= 0) return 0;
     int x2 = x+w;
     int y2 = y+h;
-    int u = 0;
+    int u = 0,v = 0;
     if (x2 <= 0 || y2 <= 0) return 0;
     if (x2 > RENDERSCREEN_WIDTH) x2 = RENDERSCREEN_WIDTH;
     if (y2 > RENDERSCREEN_HEIGHT) y2 = RENDERSCREEN_HEIGHT;
     if (x < 0) u = -(x>>1), x = 0;
-    if (y < 0) y = 0;
+    if (y < 0) v = -(y), y = 0;
     RenderCommand *command = &_renderScreen.commands[_renderScreen.commandCount++];
     command->type = RENDERCOMMAND_TRECT;
     command->color = color;
@@ -70,6 +70,7 @@ extern "C" {
     command->rect.w = x2-x;
     command->rect.y2 = y2;
     command->rect.u = u;
+    command->rect.v = v;
     return command;
   }
 
@@ -153,7 +154,7 @@ extern "C" {
           memset(&lineBuffer[command->rect.x1],command->color,command->rect.w);
         } else if (fill == RENDERCOMMAND_TEXTURED) {
           ImageInclude_readLineInto(_renderScreen.imageIncludes[command->color], lineBuffer, 
-            command->rect.x1, command->rect.x1+command->rect.w, y - command->rect.y1, command->rect.u);
+            command->rect.x1, command->rect.x1+command->rect.w, y - command->rect.y1 + command->rect.v, command->rect.u);
         }
       }
       return command->rect.y2 <= y;
