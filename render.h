@@ -1,5 +1,5 @@
 extern "C" {
-#define RENDERSCREEN_BENCH 1
+//#define RENDERSCREEN_BENCH 1
 
 #define RENDERCOMMAND_TRECT 1
 #define RENDERCOMMAND_TCIRCLE 2
@@ -41,12 +41,14 @@ extern "C" {
       } text;
     };
   } RenderCommand;
+  #define RENDERSCREEN_FLAG_NOCLEAR 1
 
   typedef struct RenderScreen_s {
     const ImageInclude *imageIncludes[RENDERSCREEN_TEXTURE_COUNT];
     const FONT_INFO *fontFormats[RENDERSCREEN_TEXT_FORMAT_COUNT];
     RenderCommand commands[RENDERSCREEN_MAX_COMMANDS];
     unsigned char commandCount;
+    unsigned char flags;
   } RenderScreen;
 
   static RenderScreen _renderScreen;
@@ -60,8 +62,8 @@ extern "C" {
     if (x2 <= 0 || y2 <= 0) return 0;
     if (x2 > RENDERSCREEN_WIDTH) x2 = RENDERSCREEN_WIDTH;
     if (y2 > RENDERSCREEN_HEIGHT) y2 = RENDERSCREEN_HEIGHT;
-    if (x < 0) u = -(x>>1), x = 0;
-    if (y < 0) v = -(y), y = 0;
+    if (x < 0) u = -x, x = 0;
+    if (y < 0) v = -y, y = 0;
     RenderCommand *command = &_renderScreen.commands[_renderScreen.commandCount++];
     command->type = RENDERCOMMAND_TRECT;
     command->color = color;
@@ -233,9 +235,10 @@ extern "C" {
     unsigned char lineBuffer[RENDERSCREEN_WIDTH];
     TinyScreenC_goTo(0, 0);
     TinyScreenC_startData();
+    unsigned char clear = (_renderScreen.flags & RENDERSCREEN_FLAG_NOCLEAR) == 0;
     unsigned char first; // position of first element in the list that's in the current slice
     for (char i = 0; i < RENDERSCREEN_HEIGHT; i += 1) {
-      memset(lineBuffer, 0, RENDERSCREEN_WIDTH);
+      if (clear) memset(lineBuffer, 0, RENDERSCREEN_WIDTH);
       if ((i&(RENDERSCREEN_SLICE)) == 0) {
         // filter the element that are in the next slice.
         first = 0xff; // invalid position in case no element is visible

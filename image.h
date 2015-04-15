@@ -7,7 +7,7 @@ typedef struct ImageInclude_s {
 } ImageInclude;
 
 static void ImageInclude_readLineInto(const ImageInclude *img, unsigned char *lineBuffer, 
-	unsigned char start, unsigned char end, unsigned char imgY, char imgX)
+	unsigned char start, unsigned char end, unsigned char imgY, unsigned char imgX)
 {
 	unsigned char width = pgm_read_byte(&img->width);
 	unsigned char height = pgm_read_byte(&img->height);
@@ -15,10 +15,23 @@ static void ImageInclude_readLineInto(const ImageInclude *img, unsigned char *li
 	int transparentIndex = pgm_read_word(&img->transparentIndex);
 	imgY %= height;
 	imgX %= width;
-	unsigned int offset = data + imgY * width + imgX;
-	for (int p=start,n=imgX;p<end;n+=1,p+=1) {
-		unsigned char c = pgm_read_byte(offset+n);
-		if (c != transparentIndex) lineBuffer[p] = c;
-		if (n == width) n = 0;
+	unsigned int offset = data + imgY * width;
+	if (transparentIndex == -1) {
+		unsigned char remains = end - start;
+		unsigned char range = width - imgX;
+		while (remains > 0) {
+			if (range > remains) range = remains;
+			memcpy_P(&lineBuffer[start], (void*)(offset + imgX), range);
+			remains-=range;
+			start+=range;
+			range = width;
+			imgX = 0;
+		}
+	} else {
+		for (int p=start,n=imgX;p<end;n+=1,p+=1) {
+			if (n == width) n = 0;
+			unsigned char c = pgm_read_byte(offset+n);
+			if (c != transparentIndex) lineBuffer[p] = c;
+		}
 	}
 }
