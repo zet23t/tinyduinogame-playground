@@ -14,7 +14,7 @@ void setup() {
 
   TinyScreenC_begin();
 
-  TinyScreenC_setBrightness(10);
+  TinyScreenC_setBrightness(2);
   _renderScreen.fontFormats[0] = &virtualDJ_5ptFontInfo;
   _renderScreen.imageIncludes[0] = &_image_grasstile;
   _renderScreen.imageIncludes[1] = &_image_ball;
