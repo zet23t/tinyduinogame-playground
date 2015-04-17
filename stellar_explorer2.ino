@@ -47,7 +47,9 @@ void handleBrightness() {
 
 void loop() {
   static unsigned char msLast = 0;
+
   unsigned long start = micros();
+  
   UpdateJoystick();
   LOOP_PROG();
   handleBrightness();
@@ -59,4 +61,7 @@ void loop() {
   RenderScreen_flush();
   StringBuffer_reset();
   msLast = (micros()-start) / 1000;
+
+  // cap to 20fps
+  while (micros() - start < 50000);
 }
