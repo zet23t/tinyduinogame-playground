@@ -10,7 +10,7 @@
 
 #include "strings.h"
 
-#include "test_loops.h"
+#include "asteroids_loop.h"
 
 unsigned char brightness = 8;
 void setup() {
