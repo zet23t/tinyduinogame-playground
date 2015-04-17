@@ -28,8 +28,14 @@ void setup() {
 }
 
 void handleBrightness() {
+  static char previous = 0;
   unsigned char b = TinyScreenC_getButtons();
- // if (b&1) 
+  if (b && !previous) {
+    if ((b&1) && brightness < 15) brightness+=1;
+    if ((b&8) && brightness > 0) brightness-=1;
+    TinyScreenC_setBrightness(brightness);
+  }
+  previous = b;
 }
 
 void loopRects() {
@@ -107,6 +113,7 @@ void loop() {
   static unsigned char msLast = 0;
   unsigned long start = micros();
   UpdateJoystick();
+  handleBrightness();
   loopSimpleTownMoveTest();
   //loopRects();
   /*RenderScreen_drawRectTexturedUV(-16,-16,16,16,0,0,16);
