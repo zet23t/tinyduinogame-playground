@@ -242,7 +242,7 @@ extern "C" {
       return 0;
     }
     if (t == RENDERCOMMAND_TTEXT) {
-      if (y < command->text.y) return -1;
+      if (y + RENDERSCREEN_SLICE < command->text.y) return -1;
       if (y >= command->text.y + _renderScreen.fontFormats[command->text.fontIndex]->height) return 1;
       return 0;
     }
