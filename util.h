@@ -9,12 +9,21 @@ extern "C" {
 	static void StringBuffer_reset() {
 		_stringBuffer.posPointer = 0;
 	}
+
+	static char* StringBuffer_new() {
+		if (STRINGBUFFER_SIZE - _stringBuffer.posPointer > 0) {
+			char *chrstr = &_stringBuffer.buffer[_stringBuffer.posPointer++];
+			chrstr[0] = 0;
+			return chrstr;
+		}
+		return 0;
+	}
 	
-	static char* StringBuffer_buffer(String str) {
-		int len = str.length()+1;
+	static char* StringBuffer_buffer(char *str) {
+		int len = strlen(str)+1;
 		if (STRINGBUFFER_SIZE - _stringBuffer.posPointer > len) {
 			char *chrstr = &_stringBuffer.buffer[_stringBuffer.posPointer];
-			str.toCharArray(chrstr, sizeof(_stringBuffer.buffer)-_stringBuffer.posPointer);
+			strcpy(chrstr,str);
 			_stringBuffer.posPointer+=len;
 			return chrstr;
 		} else {
@@ -22,11 +31,33 @@ extern "C" {
 		}
 	}
 	
-	static void StringBuffer_amend(String str) {
+	static void StringBuffer_amend(char *str) {
 		_stringBuffer.posPointer-=1;
 		if (StringBuffer_buffer(str) == 0) {
 			_stringBuffer.posPointer+=1;	
 		}
+	}
+
+	static void StringBuffer_amendDec(long i) {
+		char const digit[] = "0123456789";
+	    char* p = &_stringBuffer.buffer[--_stringBuffer.posPointer];
+	    if(i<0){
+	        *p++ = '-';
+	        i = -i;
+	        _stringBuffer.posPointer++;
+	    }
+	    int shifter = i;
+	    do{ //Move to where representation ends
+	        ++p;
+	        shifter = shifter/10;
+	        _stringBuffer.posPointer++;
+	    }while(shifter);
+	    *p = '\0';
+	    do{ //Move back, inserting digits as u go
+	        *--p = digit[i%10];
+	        i = i/10;
+	    }while(i);
+	    _stringBuffer.posPointer++;
 	}
 	
 	static char* StringBuffer_load(const char * src) {
@@ -37,6 +68,13 @@ extern "C" {
 			return strcpy_P(str, src);
 		} else {
 			return 0;
+		}
+	}
+
+	static void StringBuffer_amendLoad(const char *str) {
+		_stringBuffer.posPointer-=1;
+		if (StringBuffer_load(str) == 0) {
+			_stringBuffer.posPointer+=1;	
 		}
 	}
 	
