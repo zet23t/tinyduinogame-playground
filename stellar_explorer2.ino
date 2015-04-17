@@ -24,7 +24,7 @@ void setup() {
   _renderScreen.imageIncludes[0] = &_image_tileset_opaque;
   _renderScreen.imageIncludes[1] = &_image_tileset;
   _renderScreen.imageIncludes[2] = &_image_ball;
-  _renderScreen.flags|=RENDERSCREEN_FLAG_NOCLEAR;
+  //SPI_setClockDivider(SPI_CLOCK_DIV2); -- no effect?
 }
 
 void handleBrightness() {
@@ -69,6 +69,7 @@ static const char simpleTownMapDataLayer[] PROGMEM = {
 static unsigned int simpleTownMapPosX;
 static unsigned int simpleTownMapPosY;
 int loopSimpleTownMoveTest() {
+  _renderScreen.flags|=RENDERSCREEN_FLAG_NOCLEAR;
   int n = 0;
   _renderScreen.imageIncludes[0] = &_image_tileset_opaque;
   _renderScreen.imageIncludes[1] = &_image_tileset;
@@ -140,7 +141,7 @@ void loop() {
     RenderScreen_drawRectTextured (x,15 + sin(micros()/1000L * 0.006f+x*0.1f)*10 , 8,8,2);
     //RenderScreen_drawRect (x,45 + sin(-micros()/1000L * 0.01f+x*0.1f)*10 , 6,6,(-x+coffset)>>3);
   }*/
-  RenderScreen_drawText (0, 0, 0, StringBuffer_buffer(String((int)msLast)+"ms"), 0);
+  RenderScreen_drawText (0, 0, 0, StringBuffer_buffer(String((int)msLast)+"ms"), 0xff);
   RenderScreen_flush();
   StringBuffer_reset();
   msLast = (micros()-start) / 1000;
