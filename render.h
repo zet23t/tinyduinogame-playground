@@ -1,6 +1,8 @@
 extern "C" {
 //#define RENDERSCREEN_BENCH 1
 
+#define RENDERSCREEN_CULLING 1
+
 #define RENDERCOMMAND_TRECT 1
 #define RENDERCOMMAND_TCIRCLE 2
 #define RENDERCOMMAND_TSTAR 3
@@ -9,11 +11,12 @@ extern "C" {
 #define RENDERCOMMAND_COLORED 0x10
 #define RENDERCOMMAND_TEXTURED 0x20
 
-#define RENDERSCREEN_MAX_COMMANDS 64
+#define RENDERSCREEN_MAX_COMMANDS 60
 #define RENDERSCREEN_WIDTH 96
 #define RENDERSCREEN_HEIGHT 64
 
 #define RENDERSCREEN_TEXT_FORMAT_COUNT 1
+#define RENDERSCREEN_TILEMAP_COUNT 1
 #define RENDERSCREEN_TEXTURE_COUNT 8
 
   
@@ -41,11 +44,21 @@ extern "C" {
       } text;
     };
   } RenderCommand;
+
+  typedef struct RenderTileMapData_s
+  {
+    unsigned char *dataMap;
+    unsigned char tileSizeX;
+    unsigned char tileSizeY;
+    unsigned char dataMapWidth;
+    unsigned char dataMapHeight;
+  } RenderTileMapData;
   #define RENDERSCREEN_FLAG_NOCLEAR 1
 
   typedef struct RenderScreen_s {
     const ImageInclude *imageIncludes[RENDERSCREEN_TEXTURE_COUNT];
     const FONT_INFO *fontFormats[RENDERSCREEN_TEXT_FORMAT_COUNT];
+    RenderTileMapData *tileMap;
     RenderCommand commands[RENDERSCREEN_MAX_COMMANDS];
     unsigned char commandCount;
     unsigned char flags;
@@ -58,8 +71,8 @@ extern "C" {
     if (x>=RENDERSCREEN_WIDTH || y >= RENDERSCREEN_HEIGHT || w <= 0 || h <= 0) return 0;
     int x2 = x+w;
     int y2 = y+h;
-    int u = 0,v = 0;
     if (x2 <= 0 || y2 <= 0) return 0;
+    int u = 0,v = 0;
     if (x2 > RENDERSCREEN_WIDTH) x2 = RENDERSCREEN_WIDTH;
     if (y2 > RENDERSCREEN_HEIGHT) y2 = RENDERSCREEN_HEIGHT;
     if (x < 0) u = -x, x = 0;
@@ -76,9 +89,18 @@ extern "C" {
     return command;
   }
 
-  static void RenderScreen_drawRectTextured (int x, int y, int w, int h, unsigned char imageId) {
+  static RenderCommand* RenderScreen_drawRectTextured (int x, int y, int w, int h, unsigned char imageId) {
     RenderCommand *cmd = RenderScreen_drawRect(x,y,w,h,imageId);
     if (cmd) cmd->type|=RENDERCOMMAND_TEXTURED;
+    return cmd;
+  }
+
+  static void RenderScreen_drawRectTexturedUV (int x, int y, int w, int h, unsigned char imageId, int u, int v) {
+    RenderCommand *cmd = RenderScreen_drawRectTextured(x,y,w,h,imageId);
+    if (cmd) {
+      cmd->rect.u+=u;
+      cmd->rect.v+=v;
+    }
   }
 
   static void RenderScreen_drawCircle (int x, int y, unsigned long r16, int color) {
@@ -239,6 +261,10 @@ extern "C" {
     unsigned char first; // position of first element in the list that's in the current slice
     for (char i = 0; i < RENDERSCREEN_HEIGHT; i += 1) {
       if (clear) memset(lineBuffer, 0, RENDERSCREEN_WIDTH);
+      #ifdef RENDERSCREEN_BENCH
+      unsigned char n = 0;
+      #endif
+      #ifdef RENDERSCREEN_CULLING
       if ((i&(RENDERSCREEN_SLICE)) == 0) {
         // filter the element that are in the next slice.
         first = 0xff; // invalid position in case no element is visible
@@ -265,9 +291,6 @@ extern "C" {
         // set new command count
         _renderScreen.commandCount = p;  
       }
-      #ifdef RENDERSCREEN_BENCH
-      unsigned char n = 0;
-      #endif
       unsigned char prev = 0xff;
       for (unsigned char j=first;j<_renderScreen.commandCount;j = _renderScreen.commands[j].nextIndex) {
         if (RenderScreen_fillLine(&_renderScreen.commands[j],i,lineBuffer)) {
@@ -284,6 +307,10 @@ extern "C" {
         n+=1;
         #endif
       }
+      #else
+      for (unsigned char j=0;j<_renderScreen.commandCount;j +=1) 
+        RenderScreen_fillLine(&_renderScreen.commands[j],i,lineBuffer);
+      #endif
       #ifdef RENDERSCREEN_BENCH
       lineBuffer[_renderScreen.commandCount] ^= 0xf;
       lineBuffer[n]^= 0xff;
@@ -292,6 +319,7 @@ extern "C" {
       #endif
       TinyScreenC_writeBuffer(lineBuffer, RENDERSCREEN_WIDTH);
     }
+    TinyScreenC_waitForBuffer();
     TinyScreenC_endTransfer();
     _renderScreen.commandCount = 0;
     #ifdef RENDERSCREEN_BENCH
