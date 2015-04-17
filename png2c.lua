@@ -40,4 +40,10 @@ const unsigned char _image_%s_data[] PROGMEM = {
 const ImageInclude _image_%s PROGMEM = {
 	%d,%d,_image_%s_data,%d
 };
-]]):format(name,table.concat(pixels,","),name,width,height,name,img:getTransparent() or -1))
+const ImageInclude _image_%s_opaque PROGMEM = {
+	%d,%d,_image_%s_data,-1
+};
+]]):format(name,table.concat(pixels,","),
+	name,width,height,name,img:getTransparent() and rgbToByte(img,img:getTransparent()) or -1,
+	name,width,height,name
+))
