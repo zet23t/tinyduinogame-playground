@@ -1,4 +1,10 @@
 #define LOOP_PROG loopSimpleTownMoveTest
+
+#include "images_test.h"
+#include "images_grasstile.h"
+#include "images_ground_mud.h"
+#include "images_tileset.h"
+
 void loopRects() {
   for (int r = 0; r < 4;r+=1) {
     for (int g = 0; g < 8; g+=1) {

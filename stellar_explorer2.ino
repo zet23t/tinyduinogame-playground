@@ -8,10 +8,7 @@
 #include "image.h"
 #include "render.h"
 
-#include "images_test.h"
-#include "images_grasstile.h"
-#include "images_ground_mud.h"
-#include "images_tileset.h"
+#include "strings.h"
 
 #include "test_loops.h"
 
@@ -26,10 +23,6 @@ void setup() {
   _renderScreen.fontFormats[0] = &virtualDJ_5ptFontInfo;
   //SPI_setClockDivider(SPI_CLOCK_DIV2); -- no effect?
 }
-
-const char _string_brightness[] PROGMEM = "brightness: ";
-const char _string_percent[] PROGMEM = "%";
-const char _string_ms[] PROGMEM = "ms";
 void handleBrightness() {
   static char previous = 0,showTimeout = 0;
   unsigned char b = TinyScreenC_getButtons();
