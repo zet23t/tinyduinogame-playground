@@ -19,10 +19,11 @@ extern "C" {
 		Projectile list[PROJECTILE_MAX_COUNT];
 	} ProjectileList;
 
-	#define ASTEROIDS_MAX_COUNT 30
+	#define ASTEROIDS_MAX_COUNT 24
 	typedef struct Asteroid_s {
 		int x, y;
-		char vx, vy, size;
+		char vx, vy;
+		unsigned char sizeType;
 	} Asteroid;
 
 	typedef struct AsteroidList_s {
@@ -33,11 +34,11 @@ extern "C" {
 	static ProjectileList projectileList;
 	static AsteroidList asteroidList;
 
-	static void AsteroidList_spawn(char px, char py, char vx, char vy, char size) {
-		Asteroid a = {px,py,vx,vy,size};
+	static void AsteroidList_spawn(char px, char py, char vx, char vy, unsigned char size, unsigned char type) {
+		Asteroid a = {px<<4,py<<4,vx,vy,size|type<<3};
 		
 		for (unsigned char i = 0; i < ASTEROIDS_MAX_COUNT;i+=1) {
-			if (asteroidList.list[i].size == 0) {
+			if (asteroidList.list[i].sizeType == 0) {
 				asteroidList.list[i] = a;
 				break;
 			}
@@ -46,7 +47,7 @@ extern "C" {
 
 	static void AsteroidList_tick() {
 		for (unsigned char i = 0; i < ASTEROIDS_MAX_COUNT;i+=1) {
-			if (asteroidList.list[i].size) {
+			if (asteroidList.list[i].sizeType) {
 				Asteroid *a = &asteroidList.list[i];
 				a->x += a->vx;
 				a->y += a->vy;
@@ -54,7 +55,9 @@ extern "C" {
 				if (a->x > (104<<4)) a->x-=(114<<4);
 				if (a->y < (-10<<4)) a->y+=(84<<4);
 				if (a->y > (74<<4)) a->y-=(84<<4);
-				RenderScreen_drawRectTexturedUV((a->x>>4) - 8,(a->y>>4) - 8, 16,16,0,0,48);	
+				unsigned char type = a->sizeType>>3;
+				unsigned char size = a->sizeType&7;
+				RenderScreen_drawRectTexturedUV((a->x>>4) - 8,(a->y>>4) - 8, 16,16,0,16 * type,48);	
 			}
 		}
 	}
@@ -80,6 +83,21 @@ extern "C" {
 				p->age-=1;
 				RenderScreen_drawRectTexturedUV(p->x - 3,p->y - 3, 6,6,0,0,22);	
 				if (p->x > 100 || p->x < -10 || p->y > 70 || p->y < -10) p->age = 0;
+				else {
+					for (unsigned char j = 0; j < ASTEROIDS_MAX_COUNT;j+=1) {
+						if (asteroidList.list[j].sizeType) {
+							Asteroid *a = &asteroidList.list[j];
+							char dx = (a->x >> 4) - p->x;
+							char dy = (a->y >> 4) - p->y;
+							unsigned int dist = dx*dx + dy*dy;
+							if (dist < 8*8) {
+								// hit detected
+								p->age = 0;
+								break;
+							}
+						}
+					}
+				}
 			}
 		}
 	}
@@ -162,8 +180,8 @@ extern "C" {
 		static char init = 0;
 		if (!init) {
 			init = 1;
-			AsteroidList_spawn(40,30,2,3,3);
-			AsteroidList_spawn(90,50,2,-2,3);
+			AsteroidList_spawn(40,30,2,3,3,1);
+			AsteroidList_spawn(90,50,2,-2,3,3);
 		}
 		_renderScreen.imageIncludes[0] = &_image_asteroids_tileset;
 		
