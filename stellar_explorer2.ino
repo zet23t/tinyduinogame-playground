@@ -58,10 +58,10 @@ void loop() {
   StringBuffer_amendDec(msLast);
   StringBuffer_amendLoad(_string_ms);
   RenderScreen_drawText (0, 0, 0, fps, 0xff);
+  #endif
   RenderScreen_flush();
   StringBuffer_reset();
   msLast = (micros()-start) / 1000;
-  #endif
   // cap to 20fps
   while (micros() - start < 50000);
 }
