@@ -7,6 +7,7 @@ extern "C" {
 		int x,y;
 		int vx,vy;
 		char dir;
+		char cooldown;
 	} Ship;
 
 	typedef struct Projectile_s {
@@ -36,14 +37,16 @@ extern "C" {
 		for (unsigned char i = 0; i < PROJECTILE_MAX_COUNT;i+=1) {
 			if (projectileList.list[i].age > 0) {
 				Projectile *p = &projectileList.list[i];
+				RenderScreen_drawRectTexturedUV(p->x - 3,p->y - 3, 6,6,0,6,22);	
 				p->x+=p->vx;
 				p->y+=p->vy;
 				p->age-=1;
-				RenderScreen_drawRectTexturedUV(p->x - 3,p->y - 3, 6,6,0,0,16);	
+				RenderScreen_drawRectTexturedUV(p->x - 3,p->y - 3, 6,6,0,0,22);	
+				if (p->x > 100 || p->x < -10 || p->y > 70 || p->y < -10) p->age = 0;
 			}
 		}
 	}
-	
+
 	static unsigned char determineDir8(int dx, int dy) {
 		if ((abs(dx)) > (abs(dy)<<1)) {
 			if (dx > 0) return 2;
@@ -99,8 +102,17 @@ extern "C" {
 			if (f > 200) RenderScreen_drawRectTexturedUV(px[1]+shipX-2,py[1]+shipY-3, 6,6,0,12-n++*6,16);
 			RenderScreen_drawRectTexturedUV(px[0]+shipX-2,py[0]+shipY-3, 6,6,0,12-n++*6,16);
 		}
-		if (leftStick.normX != 0 || leftStick.normY != 0) {
-
+		if (ship.cooldown > 0) {
+			ship.cooldown -= 1;
+		}
+		if ((leftStick.normX != 0 || leftStick.normY != 0) && ship.cooldown == 0) {
+			unsigned char shootDir = determineDir8(leftStick.normX,leftStick.normY);
+			const char dirX[8] = {0,3,4,3,0,-3,-4,-3};
+			const char dirY[8] = {-4,-4,0,3,4,3,0,-3};
+			if (shootDir == ship.dir) {
+				ship.cooldown = 5;
+				ProjectileList_shoot(shipX,shipY,dirX[ship.dir] + (ship.vx >> 8),dirY[ship.dir] + (ship.vy >> 8));
+			}
 		}
 		// draw ship
 		RenderScreen_drawRectTexturedUV((ship.x>>8)-8,(ship.y>>8)-8,16,16,0,ship.dir*16,0);
