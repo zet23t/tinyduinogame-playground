@@ -19,8 +19,45 @@ extern "C" {
 		Projectile list[PROJECTILE_MAX_COUNT];
 	} ProjectileList;
 
+	#define ASTEROIDS_MAX_COUNT 30
+	typedef struct Asteroid_s {
+		int x, y;
+		char vx, vy, size;
+	} Asteroid;
+
+	typedef struct AsteroidList_s {
+		Asteroid list[ASTEROIDS_MAX_COUNT];
+	} AsteroidList;
+
 	static Ship ship = {32<<8,32<<8,0,0,0};
 	static ProjectileList projectileList;
+	static AsteroidList asteroidList;
+
+	static void AsteroidList_spawn(char px, char py, char vx, char vy, char size) {
+		Asteroid a = {px,py,vx,vy,size};
+		
+		for (unsigned char i = 0; i < ASTEROIDS_MAX_COUNT;i+=1) {
+			if (asteroidList.list[i].size == 0) {
+				asteroidList.list[i] = a;
+				break;
+			}
+		}		
+	}
+
+	static void AsteroidList_tick() {
+		for (unsigned char i = 0; i < ASTEROIDS_MAX_COUNT;i+=1) {
+			if (asteroidList.list[i].size) {
+				Asteroid *a = &asteroidList.list[i];
+				a->x += a->vx;
+				a->y += a->vy;
+				if (a->x < (-10<<4)) a->x+=(114<<4);
+				if (a->x > (104<<4)) a->x-=(114<<4);
+				if (a->y < (-10<<4)) a->y+=(84<<4);
+				if (a->y > (74<<4)) a->y-=(84<<4);
+				RenderScreen_drawRectTexturedUV((a->x>>4) - 8,(a->y>>4) - 8, 16,16,0,0,48);	
+			}
+		}
+	}
 
 	static void ProjectileList_shoot(char px, char py, char vx, char vy) {
 		Projectile p = {px,py,vx,vy,20};
@@ -80,7 +117,8 @@ extern "C" {
 		char shipX = ship.x>>8;
 		char shipY = ship.y>>8;
 		// steer
-		if (rightStick.normX != 0 || rightStick.normY != 0) {
+		char steering = rightStick.normX != 0 || rightStick.normY != 0;
+		if (steering) {
 			// determine steering direction
 			ship.dir = determineDir8(rightStick.normX,rightStick.normY);
 			// exhaust directions
@@ -107,6 +145,7 @@ extern "C" {
 		}
 		if ((leftStick.normX != 0 || leftStick.normY != 0) && ship.cooldown == 0) {
 			unsigned char shootDir = determineDir8(leftStick.normX,leftStick.normY);
+			if (!steering) ship.dir = shootDir;
 			const char dirX[8] = {0,3,4,3,0,-3,-4,-3};
 			const char dirY[8] = {-4,-4,0,3,4,3,0,-3};
 			if (shootDir == ship.dir) {
@@ -120,9 +159,16 @@ extern "C" {
 
 	void asteroidsLoop()
 	{
+		static char init = 0;
+		if (!init) {
+			init = 1;
+			AsteroidList_spawn(40,30,2,3,3);
+			AsteroidList_spawn(90,50,2,-2,3);
+		}
 		_renderScreen.imageIncludes[0] = &_image_asteroids_tileset;
 		
 		ProjectileList_tick();
 		Ship_tick();
+		AsteroidList_tick();
 	}
 }
