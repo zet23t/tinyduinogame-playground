@@ -43,6 +43,20 @@ extern "C" {
 			}
 		}
 	}
+	
+	static unsigned char determineDir8(int dx, int dy) {
+		if ((abs(dx)) > (abs(dy)<<1)) {
+			if (dx > 0) return 2;
+			else return 6;
+		} else if ((abs(dy)) > (abs(dx)<<1)) {
+			if (dy > 0) return 4;
+			else return 0;
+		} 
+		else if (dx > 0 && dy > 0) return 3;
+		else if (dx > 0 && dy < 0) return 1;
+		else if (dx < 0 && dy > 0) return 5;
+		else return 7;
+	}
 
 	static void Ship_tick() {
 		// accelerate
@@ -65,17 +79,7 @@ extern "C" {
 		// steer
 		if (rightStick.normX != 0 || rightStick.normY != 0) {
 			// determine steering direction
-			if ((abs(rightStick.normX)) > (abs(rightStick.normY)<<1)) {
-				if (rightStick.normX > 0) ship.dir = 2;
-				else ship.dir = 6;
-			} else if ((abs(rightStick.normY)) > (abs(rightStick.normX)<<1)) {
-				if (rightStick.normY > 0) ship.dir = 4;
-				else ship.dir = 0;
-			} 
-			else if (rightStick.normX > 0 && rightStick.normY > 0) ship.dir = 3;
-			else if (rightStick.normX > 0 && rightStick.normY < 0) ship.dir = 1;
-			else if (rightStick.normX < 0 && rightStick.normY > 0) ship.dir = 5;
-			else ship.dir = 7;
+			ship.dir = determineDir8(rightStick.normX,rightStick.normY);
 			// exhaust directions
 			char px[2],py[2];
 			switch (ship.dir) {
