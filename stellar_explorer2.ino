@@ -53,7 +53,7 @@ void loop() {
   UpdateJoystick();
   LOOP_PROG();
   handleBrightness();
-  
+  #ifdef SHOW_FPS
   char *fps = StringBuffer_new();
   StringBuffer_amendDec(msLast);
   StringBuffer_amendLoad(_string_ms);
@@ -61,7 +61,7 @@ void loop() {
   RenderScreen_flush();
   StringBuffer_reset();
   msLast = (micros()-start) / 1000;
-
+  #endif
   // cap to 20fps
   while (micros() - start < 50000);
 }
