@@ -57,7 +57,9 @@ extern "C" {
 				if (a->y > (74<<4)) a->y-=(84<<4);
 				unsigned char type = a->sizeType>>3;
 				unsigned char size = a->sizeType&7;
-				RenderScreen_drawRectTexturedUV((a->x>>4) - 8,(a->y>>4) - 8, 16,16,0,16 * type,48);	
+				unsigned char spriteSize = size == 1 ? 8 : (size == 2 ? 11 : 16);
+				unsigned char spriteY = size == 1 ? 29 : (size == 2 ? 37 : 48);
+				RenderScreen_drawRectTexturedUV((a->x>>4) - (spriteSize>>1),(a->y>>4) - (spriteSize>>1), spriteSize,spriteSize,0,spriteSize * type,spriteY);	
 			}
 		}
 	}
@@ -90,14 +92,26 @@ extern "C" {
 							char dx = (a->x >> 4) - p->x;
 							char dy = (a->y >> 4) - p->y;
 							unsigned int dist = dx*dx + dy*dy;
-							if (dist < 8*8) {
+							unsigned char size = a->sizeType&7;
+
+							if (dist < (size==3 ? 8*8 : (size==2 ? 6*6 : 3*3))) {
 								// hit detected
-								p->age = 0;
+								p->age = -3;
 								break;
 							}
 						}
 					}
 				}
+			} else if (projectileList.list[i].age < 0) {
+				Projectile *p = &projectileList.list[i];
+				unsigned char dist = (4 + projectileList.list[i].age) * 2;
+				unsigned char t = (4+p->age)*6;
+				for (unsigned char i=0;i<4;i+=1) {
+					int dx = ((i&1)<<1)-1;
+					int dy = (i&2)-1;
+					RenderScreen_drawRectTexturedUV(p->x - 3+dx*dist,p->y - 3+dy * dist, 6,6,0,t,22);
+				}
+				p->age+=1;
 			}
 		}
 	}
@@ -180,8 +194,9 @@ extern "C" {
 		static char init = 0;
 		if (!init) {
 			init = 1;
-			AsteroidList_spawn(40,30,2,3,3,1);
-			AsteroidList_spawn(90,50,2,-2,3,3);
+			for (int i=0;i<8;i+=1)
+				AsteroidList_spawn(random(),random(),random()%5-2,random()%5-2,random()%3+1,random()%4);
+			
 		}
 		_renderScreen.imageIncludes[0] = &_image_asteroids_tileset;
 		
