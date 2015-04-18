@@ -9,34 +9,62 @@ extern "C" {
 		char dir;
 	} Ship;
 
+	typedef struct Projectile_s {
+		char x, y, vx, vy, age;
+	} Projectile;
+
+	#define PROJECTILE_MAX_COUNT 10
+	typedef struct ProjectileList_s {
+		Projectile list[PROJECTILE_MAX_COUNT];
+	} ProjectileList;
+
 	static Ship ship = {32<<8,32<<8,0,0,0};
+	static ProjectileList projectileList;
+
+	static void ProjectileList_shoot(char px, char py, char vx, char vy) {
+		Projectile p = {px,py,vx,vy,20};
+
+		for (unsigned char i = 0; i < PROJECTILE_MAX_COUNT;i+=1) {
+			if (projectileList.list[i].age == 0) {
+				projectileList.list[i] = p;
+				break;
+			}
+		}
+	}
+
+	static void ProjectileList_tick() {
+		for (unsigned char i = 0; i < PROJECTILE_MAX_COUNT;i+=1) {
+			if (projectileList.list[i].age > 0) {
+				Projectile *p = &projectileList.list[i];
+				p->x+=p->vx;
+				p->y+=p->vy;
+				p->age-=1;
+				RenderScreen_drawRectTexturedUV(p->x - 3,p->y - 3, 6,6,0,0,16);	
+			}
+		}
+	}
 
 	static void Ship_tick() {
+		// accelerate
 		ship.vx += rightStick.normX>>2;
 		ship.vy += rightStick.normY>>2;
+		// move
 		ship.x+=ship.vx;
 		ship.y+=ship.vy;
+		// wrap
 		while (ship.x > (96<<8)) ship.x-=96<<8;
 		while (ship.x < 0) ship.x+=96<<8;
 		while (ship.y < 0) ship.y+=64<<8;
 		while (ship.y > (64<<8)) ship.y-=64<<8;
-
-		//float fx = rightStick.normX;
-		//float fy = rightStick.normY;
-
+		// drag
 		ship.vx -= ship.vx>>6;
 		ship.vy -= ship.vy>>6;
-		/*if (fx != 0 && fy != 0) {
-			ship.dir = (int)(atan2(fx,-fy)/3.141592653f/2.0f*8.0f);
-			float len = sqrt(fx*fx+fy*fy);
-			float nx = fx/len;
-			float ny = fy/len;
-
-		}*/
+		// screen pos
 		char shipX = ship.x>>8;
 		char shipY = ship.y>>8;
-
+		// steer
 		if (rightStick.normX != 0 || rightStick.normY != 0) {
+			// determine steering direction
 			if ((abs(rightStick.normX)) > (abs(rightStick.normY)<<1)) {
 				if (rightStick.normX > 0) ship.dir = 2;
 				else ship.dir = 6;
@@ -48,6 +76,7 @@ extern "C" {
 			else if (rightStick.normX > 0 && rightStick.normY < 0) ship.dir = 1;
 			else if (rightStick.normX < 0 && rightStick.normY > 0) ship.dir = 5;
 			else ship.dir = 7;
+			// exhaust directions
 			char px[2],py[2];
 			switch (ship.dir) {
 				case 0: px[0] =  0, py[0] =  5,px[1] =   0, py[1] =   8; break;
@@ -61,10 +90,15 @@ extern "C" {
 			}
 			unsigned int f = (rightStick.normX>>4) * (rightStick.normX>>4) + (rightStick.normY>>4) * (rightStick.normY>>4);
 			unsigned char n = 0;
+			// draw exhaust
 			if (f > 500) RenderScreen_drawRectTexturedUV(px[1]+(px[0]>>1)+shipX-2,py[1]+(py[0]>>1)+shipY-3, 6,6,0,12-n++*6,16);
 			if (f > 200) RenderScreen_drawRectTexturedUV(px[1]+shipX-2,py[1]+shipY-3, 6,6,0,12-n++*6,16);
 			RenderScreen_drawRectTexturedUV(px[0]+shipX-2,py[0]+shipY-3, 6,6,0,12-n++*6,16);
 		}
+		if (leftStick.normX != 0 || leftStick.normY != 0) {
+
+		}
+		// draw ship
 		RenderScreen_drawRectTexturedUV((ship.x>>8)-8,(ship.y>>8)-8,16,16,0,ship.dir*16,0);
 	}
 
@@ -72,6 +106,7 @@ extern "C" {
 	{
 		_renderScreen.imageIncludes[0] = &_image_asteroids_tileset;
 		
+		ProjectileList_tick();
 		Ship_tick();
 	}
 }
