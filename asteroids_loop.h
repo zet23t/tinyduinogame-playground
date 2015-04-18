@@ -30,9 +30,19 @@ extern "C" {
 		Asteroid list[ASTEROIDS_MAX_COUNT];
 	} AsteroidList;
 
+	#define GAME_MODE_STARTSCREEN 0
+	#define GAME_MODE_PAUSE 1
+	#define GAME_MODE_PLAY 2
+	#define GAME_MODE_DIED 3
+
+	typedef struct Game_s {
+		unsigned char mode;
+	} Game;
+
 	static Ship ship = {32<<8,32<<8,0,0,0};
 	static ProjectileList projectileList;
 	static AsteroidList asteroidList;
+	static Game game;
 
 	static void AsteroidList_spawn(char px, char py, char vx, char vy, unsigned char size, unsigned char type) {
 		Asteroid a = {px<<4,py<<4,vx,vy,size|type<<3};
@@ -94,9 +104,25 @@ extern "C" {
 							unsigned int dist = dx*dx + dy*dy;
 							unsigned char size = a->sizeType&7;
 
-							if (dist < (size==3 ? 8*8 : (size==2 ? 6*6 : 3*3))) {
+							if (dist < (size==3 ? 9*8 : (size==2 ? 7*7 : 4*4))) {
 								// hit detected
-								p->age = -3;
+								p->age = -7;
+								if (cheapRnd()%8 >= (size<<1)+1) {
+									if (size > 1) {
+										for (unsigned char k=1;k<size;k+=1) {
+											AsteroidList_spawn((a->x>>4)+cheapRnd()%8-4,
+												(a->y>>4)+cheapRnd()%8-4,
+												a->vx+cheapRnd()%15-7,
+												a->vy+cheapRnd()%15-7,
+												size-1,
+												cheapRnd()%4);
+										}
+										size-=1;
+										a->sizeType = a->sizeType&(~7) | size;
+									} else {
+										a->sizeType = 0;
+									}
+								}
 								break;
 							}
 						}
@@ -105,10 +131,16 @@ extern "C" {
 			} else if (projectileList.list[i].age < 0) {
 				Projectile *p = &projectileList.list[i];
 				unsigned char dist = (4 + projectileList.list[i].age) * 2;
-				unsigned char t = (4+p->age)*6;
+				unsigned char t = (8+p->age)*6;
 				for (unsigned char i=0;i<4;i+=1) {
 					int dx = ((i&1)<<1)-1;
 					int dy = (i&2)-1;
+					if (t > 16) {
+						//if (cheapRnd()%4==0) continue;
+						t = 18 + cheapRnd()%4*6;
+						//dx += cheapRnd()%4-2;
+						//dy += cheapRnd()%4-2;
+					}
 					RenderScreen_drawRectTexturedUV(p->x - 3+dx*dist,p->y - 3+dy * dist, 6,6,0,t,22);
 				}
 				p->age+=1;
@@ -128,6 +160,26 @@ extern "C" {
 		else if (dx > 0 && dy < 0) return 1;
 		else if (dx < 0 && dy > 0) return 5;
 		else return 7;
+	}
+
+	static unsigned char determineDir16(int dx, int dy) {
+		if ((abs(dx)) > (abs(dy)<<2)) {
+			if (dx > 0) return 4;
+			else return 12;
+		} else if ((abs(dy)) > (abs(dx)<<2)) {
+			if (dy > 0) return 8;
+			else return 0;
+		} else if ((abs(dx)) > (abs(dy)<<1)) {
+			if (dx > 0) return dy > 0 ? 5 : 3;
+			else return dy > 0 ? 11 : 13;
+		} else if ((abs(dy)) > (abs(dx)<<1)) {
+			if (dy > 0) return dx > 0 ? 7 : 9;
+			else return dx > 0 ? 1 : 15;
+		} 
+		else if (dx > 0 && dy > 0) return 6;
+		else if (dx > 0 && dy < 0) return 2;
+		else if (dx < 0 && dy > 0) return 10;
+		else return 14;
 	}
 
 	static void Ship_tick() {
@@ -176,32 +228,68 @@ extern "C" {
 			ship.cooldown -= 1;
 		}
 		if ((leftStick.normX != 0 || leftStick.normY != 0) && ship.cooldown == 0) {
-			unsigned char shootDir = determineDir8(leftStick.normX,leftStick.normY);
-			if (!steering) ship.dir = shootDir;
-			const char dirX[8] = {0,3,4,3,0,-3,-4,-3};
-			const char dirY[8] = {-4,-4,0,3,4,3,0,-3};
-			if (shootDir == ship.dir) {
+			unsigned char shootDir = determineDir16(leftStick.normX,leftStick.normY);
+			if (!steering) ship.dir = shootDir / 2;
+			const char dirX[16] = {0,1,3,4, 5,4,3,1, 0,-1,-3,-4, -5,-4,-3,-1};
+			const char dirY[16] = {-5,-4,-3,-1, 0,1,3,4, 5,4,3,1, 0,-1,-3,-4};
+			if (shootDir/2 == ship.dir) {
 				ship.cooldown = 5;
-				ProjectileList_shoot(shipX,shipY,dirX[ship.dir] + (ship.vx >> 8),dirY[ship.dir] + (ship.vy >> 8));
+				ProjectileList_shoot(shipX,shipY,dirX[shootDir] + (ship.vx >> 8),dirY[shootDir] + (ship.vy >> 8));
 			}
 		}
 		// draw ship
 		RenderScreen_drawRectTexturedUV((ship.x>>8)-8,(ship.y>>8)-8,16,16,0,ship.dir*16,0);
 	}
 
-	void asteroidsLoop()
+	static void asteroidsSetup() {
+		_renderScreen.imageIncludes[0] = &_image_asteroids_tileset;
+		for (int i=0;i<8;i+=1)
+			AsteroidList_spawn(random(),random(),random()%5-2,random()%5-2,random()%3+1,random()%4);	
+	}
+
+	static void asteroidsGamePlayLoop() {
+		ProjectileList_tick();
+		Ship_tick();
+		AsteroidList_tick();
+		if (leftButton == 2 || rightButton == 2) {
+			game.mode = GAME_MODE_PAUSE;
+		}
+	}
+
+	static void asteroidsGamePauseLoop() {
+		RenderScreen_drawRectTexturedUV(0,22,96,15,0,64,49);
+  		RenderScreen_drawText (15, 40,    0, StringBuffer_buffer("game paused"), 0xff);
+  		RenderScreen_drawText (13, 40+8,  0, StringBuffer_buffer("press button"), 0xff);
+  		RenderScreen_drawText (18, 40+16, 0, StringBuffer_buffer("to continue"), 0xff);
+		if (leftButton == 2 || rightButton == 2) {
+			game.mode = GAME_MODE_PLAY;
+		}
+	}
+
+	static void asteroidsGameStartScreen() {
+		RenderScreen_drawRectTexturedUV(0,22,96,15,0,64,49);
+  		RenderScreen_drawText (13, 40, 0, StringBuffer_buffer("press button"), 0xff);
+  		RenderScreen_drawText (13, 40+8, 0, StringBuffer_buffer("  to start  "), 0xff);
+  		RenderScreen_drawText (-1, 40+16, 0, StringBuffer_buffer("tinyduinogames.com"), 0xff);
+		if (leftButton || rightButton) {
+			asteroidsSetup();
+			game.mode = GAME_MODE_PLAY;
+		}
+	}
+
+	static void asteroidsLoop()
 	{
 		static char init = 0;
 		if (!init) {
 			init = 1;
-			for (int i=0;i<8;i+=1)
-				AsteroidList_spawn(random(),random(),random()%5-2,random()%5-2,random()%3+1,random()%4);
-			
+			asteroidsSetup();
 		}
-		_renderScreen.imageIncludes[0] = &_image_asteroids_tileset;
 		
-		ProjectileList_tick();
-		Ship_tick();
-		AsteroidList_tick();
+		switch (game.mode) {
+			case GAME_MODE_DIED: break;
+			case GAME_MODE_PLAY: asteroidsGamePlayLoop(); break;
+			case GAME_MODE_STARTSCREEN: asteroidsGameStartScreen(); break;
+			case GAME_MODE_PAUSE: asteroidsGamePauseLoop(); break;
+		}	
 	}
 }
