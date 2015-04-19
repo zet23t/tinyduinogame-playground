@@ -152,40 +152,6 @@ extern "C" {
 		}
 	}
 
-	static unsigned char determineDir8(int dx, int dy) {
-		if ((abs(dx)) > (abs(dy)<<1)) {
-			if (dx > 0) return 2;
-			else return 6;
-		} else if ((abs(dy)) > (abs(dx)<<1)) {
-			if (dy > 0) return 4;
-			else return 0;
-		} 
-		else if (dx > 0 && dy > 0) return 3;
-		else if (dx > 0 && dy < 0) return 1;
-		else if (dx < 0 && dy > 0) return 5;
-		else return 7;
-	}
-
-	static unsigned char determineDir16(int dx, int dy) {
-		if ((abs(dx)) > (abs(dy)<<2)) {
-			if (dx > 0) return 4;
-			else return 12;
-		} else if ((abs(dy)) > (abs(dx)<<2)) {
-			if (dy > 0) return 8;
-			else return 0;
-		} else if ((abs(dx)) > (abs(dy)<<1)) {
-			if (dx > 0) return dy > 0 ? 5 : 3;
-			else return dy > 0 ? 11 : 13;
-		} else if ((abs(dy)) > (abs(dx)<<1)) {
-			if (dy > 0) return dx > 0 ? 7 : 9;
-			else return dx > 0 ? 1 : 15;
-		} 
-		else if (dx > 0 && dy > 0) return 6;
-		else if (dx > 0 && dy < 0) return 2;
-		else if (dx < 0 && dy > 0) return 10;
-		else return 14;
-	}
-
 	static void Ship_tick() {
 		// accelerate
 		ship.vx += rightStick.normX>>2;
