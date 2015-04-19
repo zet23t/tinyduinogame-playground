@@ -39,7 +39,7 @@ extern "C" {
 		unsigned char mode;
 	} Game;
 
-	static Ship ship = {32<<8,32<<8,0,0,0};
+	static Ship ship;
 	static ProjectileList projectileList;
 	static AsteroidList asteroidList;
 	static Game game;
@@ -65,7 +65,7 @@ extern "C" {
 				if (a->x > (104<<4)) a->x-=(114<<4);
 				if (a->y < (-10<<4)) a->y+=(84<<4);
 				if (a->y > (74<<4)) a->y-=(84<<4);
-				unsigned char type = a->sizeType>>3;
+				unsigned char type =(a->sizeType>>3)&3;
 				unsigned char size = a->sizeType&7;
 				unsigned char spriteSize = size == 1 ? 8 : (size == 2 ? 11 : 16);
 				unsigned char spriteY = size == 1 ? 29 : (size == 2 ? 37 : 48);
@@ -103,11 +103,11 @@ extern "C" {
 							char dy = (a->y >> 4) - p->y;
 							unsigned int dist = dx*dx + dy*dy;
 							unsigned char size = a->sizeType&7;
-
 							if (dist < (size==3 ? 9*8 : (size==2 ? 7*7 : 4*4))) {
+								unsigned char hits = a->sizeType>>6;
 								// hit detected
 								p->age = -7;
-								if (cheapRnd()%8 >= (size<<1)+1) {
+								if (hits >= size) {
 									if (size > 1) {
 										for (unsigned char k=1;k<size;k+=1) {
 											AsteroidList_spawn((a->x>>4)+cheapRnd()%8-4,
@@ -122,7 +122,11 @@ extern "C" {
 									} else {
 										a->sizeType = 0;
 									}
+								} else {
+									hits+=1;
+									a->sizeType = a->sizeType & (~(3<<6))|(hits<<6);
 								}
+
 								break;
 							}
 						}
@@ -243,14 +247,28 @@ extern "C" {
 
 	static void asteroidsSetup() {
 		_renderScreen.imageIncludes[0] = &_image_asteroids_tileset;
-		for (int i=0;i<8;i+=1)
-			AsteroidList_spawn(random(),random(),random()%5-2,random()%5-2,random()%3+1,random()%4);	
+		memset(&ship,0,sizeof(ship));
+		memset(&asteroidList,0,sizeof(asteroidList));
+		memset(&projectileList,0,sizeof(projectileList));
+		ship.x = 48<<8;
+		ship.y = 32<<8;
+		for (int i=0;i<3;i+=1) {
+			char x = random()%96;
+			char y = random()%32;
+			long dx = x - 48;
+			long dy = y - 32;
+			if (dx*dx+dy*dy > 200)
+				AsteroidList_spawn(x,y,random()%5-2,random()%5-2,3,random()%4);	
+			else i -= 1;
+			
+		}
 	}
 
 	static void asteroidsGamePlayLoop() {
 		ProjectileList_tick();
 		Ship_tick();
 		AsteroidList_tick();
+		//RenderScreen_drawRectTexturedUV((96-46)/2,0,46,11,0,44,37);
 		if (leftButton == 2 || rightButton == 2) {
 			game.mode = GAME_MODE_PAUSE;
 		}
