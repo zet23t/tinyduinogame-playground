@@ -1,7 +1,7 @@
 extern "C" {
 	#include <math.h>
 	// circular radius in which the joystick position is ignored
-	#define DEAD_ZONE 90.0f
+	#define DEAD_ZONE 100.0f
 	typedef struct JoystickData_s {
 		short x;
 		short y;
