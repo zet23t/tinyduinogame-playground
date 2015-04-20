@@ -30,7 +30,8 @@ extern "C" {
       } rect;
       struct {
         // circle
-        unsigned char x, y, r;
+        char x, y;
+        unsigned char r;
         unsigned short r2;
       } circle;
       struct {
@@ -105,7 +106,7 @@ extern "C" {
 
   static void RenderScreen_drawCircle (int x, int y, unsigned long r16, int color) {
     if (_renderScreen.commandCount >= RENDERSCREEN_MAX_COMMANDS) return;
-    int r = r16 >> 4;
+    int r = r16 >> 2;
     if (x + r <= 0 || x-r >= RENDERSCREEN_WIDTH || y + r <= 0 || y - r >= RENDERSCREEN_HEIGHT) return;
     RenderCommand *command = &_renderScreen.commands[_renderScreen.commandCount++];
     command->type = RENDERCOMMAND_TCIRCLE;
@@ -113,7 +114,9 @@ extern "C" {
     command->circle.x = x;
     command->circle.y = y;
     command->circle.r = r;
-    command->circle.r2 = (r16 * r16 >> 8) + (r);
+    unsigned long r2 = ((r16 * r16) >> 4) + (r);
+    if (r2 > 0xffff) r2 = 0xffff;
+    command->circle.r2 = r2;
   }
 
   static void RenderScreen_drawText (int x, int y, unsigned char fontIndex, char *string, unsigned char color) {
