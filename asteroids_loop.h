@@ -163,6 +163,31 @@ extern "C" {
 	}
 
 	static void Ship_tick() {
+		char activeShield = 0;
+		for (unsigned char i = 0; i < ASTEROIDS_MAX_COUNT;i+=1) {
+			if (asteroidList.list[i].sizeType) {
+				Asteroid *a = &asteroidList.list[i];
+				int dx = (a->x - ship.x)>>8;
+				int dy = (a->y - ship.y)>>8;
+				int dist = dx*dx+dy*dy;
+				unsigned char size = a->sizeType&7;
+				if (dist < (size==3 ? 12*12 : (size==2 ? 10*10 : 7*7))) {
+					if (game.shipDamage < 19)
+						game.shipDamage+=1;
+					a->vx+=(dx>>(size));
+					a->vy+=(dy>>(size));
+					ship.vx-=dx<<(size);
+					ship.vy-=dy<<(size);
+
+					activeShield = 1;
+				}
+
+			}
+		}
+		if (game.shipDamage >= 19) {
+			game.countdown = 20;
+			return;
+		}
 		// accelerate
 		ship.vx += rightStick.normX>>2;
 		ship.vy += rightStick.normY>>2;
@@ -218,7 +243,10 @@ extern "C" {
 			}
 		}
 		// draw ship
-		RenderScreen_drawRectTexturedUV((ship.x>>8)-8,(ship.y>>8)-8,16,16,0,ship.dir*16,0);
+		char spriteX = (ship.x>>8)-8;
+		char spriteY = (ship.y>>8)-8;
+		RenderScreen_drawRectTexturedUV(spriteX,spriteY,16,16,0,ship.dir*16,0);
+		if (activeShield) RenderScreen_drawRectTexturedUV(spriteX,spriteY,16,16,0,48,16);
 	}
 
 	static void asteroidsSetup(unsigned char cnt) {
