@@ -200,8 +200,10 @@ extern "C" {
 		while (ship.y < 0) ship.y+=64<<8;
 		while (ship.y > (64<<8)) ship.y-=64<<8;
 		// drag
-		ship.vx -= ship.vx>>6;
-		ship.vy -= ship.vy>>6;
+		if (ship.vx>>6) ship.vx -= ship.vx>>6;
+		else ship.vx -= ship.vx < 0 ? -1 : 1;
+		if (ship.vy>>6) ship.vy -= ship.vy>>6;
+		else ship.vy -= ship.vy < 0 ? -1 : 1;
 		// screen pos
 		char shipX = ship.x>>8;
 		char shipY = ship.y>>8;
