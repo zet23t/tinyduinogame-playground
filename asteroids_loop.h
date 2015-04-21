@@ -279,7 +279,7 @@ extern "C" {
 
 		if (game.timerMode == TIMER_WARMUP &&game.countdown < 80) {
 			if (game.countdown < 20) {
-				unsigned long r = 120 - game.countdown * 6;
+				unsigned long r = 60 - game.countdown*3;
 				RenderScreen_drawCircle(48,32,r*4l,0xff);
 			}
 			RenderScreen_drawText (0, 20,    0, StringBuffer_buffer("incoming asteroids"), 0xff);
