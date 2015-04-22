@@ -84,12 +84,6 @@ extern "C" {
 				char x = (a->x>>8) - (spriteSize>>1);
 				char y = (a->y>>8) - (spriteSize>>1);
 
-				// this is ... a bit odd now. I want to have a continous movein / move out drawing,
-				// so if an asteroid vanished half on the left screen, it should enter the right screen
-				// just halfly as well.
-				//for (short ox = -88; ox <= 88; ox+=88)
-				//	for (short oy = -64; oy <=64; oy+=64)
-				//		RenderScreen_drawRectTexturedUV((x+ox-4)%88+4,(y+oy)%64, spriteSize,spriteSize,0,spriteSize * type,spriteY);
 				RenderScreen_drawRectTexturedUV(x,y, spriteSize,spriteSize,0,spriteSize * type,spriteY);
 				n+=1;
 			}
