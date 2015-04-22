@@ -1,3 +1,4 @@
+#define SHOW_FPS 1
 #define LOOP_PROG asteroidsLoop
 #define COOLDOWN_DELAY 8
 
@@ -38,12 +39,15 @@ extern "C" {
 
 	#define TIMER_WARMUP 1
 	#define TIMER_LEVELDONE 2
+	#define TIMER_DIED 3
 
 	typedef struct Game_s {
 		unsigned char mode;
 		unsigned char timerMode;
 		unsigned int countdown;
 		char shipDamage;
+		unsigned short level;
+		unsigned int points;
 	} Game;
 
 	static Ship ship;
@@ -69,15 +73,24 @@ extern "C" {
 				Asteroid *a = &asteroidList.list[i];
 				a->x += a->vx<<4;
 				a->y += a->vy<<4;
-				if (a->x < (-10<<8)) a->x+=(114<<8);
-				if (a->x > (104<<8)) a->x-=(114<<8);
-				if (a->y < (-10<<8)) a->y+=(84<<8);
-				if (a->y > (74<<8)) a->y-=(84<<8);
 				unsigned char type =(a->sizeType>>3)&3;
 				unsigned char size = a->sizeType&7;
 				unsigned char spriteSize = size == 1 ? 8 : (size == 2 ? 11 : 16);
 				unsigned char spriteY = size == 1 ? 29 : (size == 2 ? 37 : 48);
-				RenderScreen_drawRectTexturedUV((a->x>>8) - (spriteSize>>1),(a->y>>8) - (spriteSize>>1), spriteSize,spriteSize,0,spriteSize * type,spriteY);
+				if (a->x < (4<<8)) a->x+=(88<<8);
+				if (a->x > (92<<8)) a->x-=(88<<8);
+				if (a->y < (0<<8)) a->y+=(64<<8);
+				if (a->y > (64<<8)) a->y-=(64<<8);
+				char x = (a->x>>8) - (spriteSize>>1);
+				char y = (a->y>>8) - (spriteSize>>1);
+
+				// this is ... a bit odd now. I want to have a continous movein / move out drawing,
+				// so if an asteroid vanished half on the left screen, it should enter the right screen
+				// just halfly as well.
+				//for (short ox = -88; ox <= 88; ox+=88)
+				//	for (short oy = -64; oy <=64; oy+=64)
+				//		RenderScreen_drawRectTexturedUV((x+ox-4)%88+4,(y+oy)%64, spriteSize,spriteSize,0,spriteSize * type,spriteY);
+				RenderScreen_drawRectTexturedUV(x,y, spriteSize,spriteSize,0,spriteSize * type,spriteY);
 				n+=1;
 			}
 		}
@@ -120,13 +133,14 @@ extern "C" {
 								if (hits >= size) {
 									if (size > 1) {
 										for (unsigned char k=1;k<size;k+=1) {
-											AsteroidList_spawn((a->x>>8)+cheapRnd()%8-4,
-												(a->y>>8)+cheapRnd()%8-4,
-												a->vx+cheapRnd()%15-7,
-												a->vy+cheapRnd()%15-7,
+											AsteroidList_spawn((a->x>>8)+random()%8-4,
+												(a->y>>8)+random()%8-4,
+												a->vx+random()%15-7,
+												a->vy+random()%15-7,
 												size-1,
-												cheapRnd()%4);
+												random()%4);
 										}
+										game.points+=1;
 										size-=1;
 										a->sizeType = a->sizeType&(~7) | size;
 									} else {
@@ -172,8 +186,14 @@ extern "C" {
 				int dist = dx*dx+dy*dy;
 				unsigned char size = a->sizeType&7;
 				if (dist < (size==3 ? 12*12 : (size==2 ? 10*10 : 7*7))) {
-					if (game.shipDamage < 19)
+					if (game.shipDamage < 18)
 						game.shipDamage+=1;
+					else {
+						game.countdown = 20;
+						game.timerMode = TIMER_DIED;
+						game.mode = GAME_MODE_DIED;
+						return;
+					}
 					a->vx+=(dx>>(size));
 					a->vy+=(dy>>(size));
 					ship.vx-=dx<<(size);
@@ -183,10 +203,6 @@ extern "C" {
 				}
 
 			}
-		}
-		if (game.shipDamage >= 19) {
-			game.countdown = 20;
-			return;
 		}
 		// accelerate
 		ship.vx += rightStick.normX>>2;
@@ -251,29 +267,49 @@ extern "C" {
 		if (activeShield) RenderScreen_drawRectTexturedUV(spriteX,spriteY,16,16,0,48,16);
 	}
 
-	static void asteroidsSetup(unsigned char cnt) {
-		_renderScreen.imageIncludes[0] = &_image_asteroids_tileset;
+	static void nextLevel() {
+		game.level += 1;
 		memset(&ship,0,sizeof(ship));
 		memset(&asteroidList,0,sizeof(asteroidList));
 		memset(&projectileList,0,sizeof(projectileList));
-		memset(&game,0,sizeof(game));
 		ship.x = 48<<8;
 		ship.y = 32<<8;
-		for (int i=0;i<cnt;i+=1) {
+		for (int i=0;i<game.level * 2 && i < ASTEROIDS_MAX_COUNT / 2;i+=1) {
 			char x = random()%96;
 			char y = random()%32;
 			long dx = x - 48;
 			long dy = y - 32;
 			if (dx*dx+dy*dy > 200)
-				AsteroidList_spawn(x,y,random()%5-2,random()%5-2,3,random()%4);	
+				AsteroidList_spawn(x,y,random()%10-5,random()%10-5,3,random()%4);	
 			else i -= 1;
 			
 		}
 	}
+	static void asteroidsSetup() {
+		_renderScreen.imageIncludes[0] = &_image_asteroids_tileset;
+		memset(&game,0,sizeof(game));
+		nextLevel();
+	}
+
 
 	static void setWarmupTimer() {
 		game.timerMode = TIMER_WARMUP;
 		game.countdown = 0;
+	}
+
+	static void asteroidsGameDiedMode() {
+		ProjectileList_tick();
+		AsteroidList_tick();
+		RenderScreen_drawText (20, 10,    0, StringBuffer_buffer("game over"), 0xff);
+		RenderScreen_drawText (5, 18,    0, StringBuffer_buffer("your highscore:"), 0xff);
+		RenderScreen_drawText (44,28, 0, StringBuffer_new(),0xff);
+		StringBuffer_amendDec(game.points);
+
+		RenderScreen_drawText (10, 40,    0, StringBuffer_buffer("press button"), 0xff);
+		RenderScreen_drawText (18, 48,    0, StringBuffer_buffer("to restart"), 0xff);
+		if ((leftButton == 2 || rightButton == 2)) {
+			game.mode = GAME_MODE_STARTSCREEN;
+		}
 	}
 
 	static void asteroidsGamePlayLoop() {
@@ -284,8 +320,10 @@ extern "C" {
 				unsigned long r = 60 - game.countdown*3;
 				RenderScreen_drawCircle(48,32,r*4l,0xff);
 			}
+			RenderScreen_drawText (30, 10,    0, StringBuffer_buffer("level "), 0xff);
+			StringBuffer_amendDec(game.level);
 			RenderScreen_drawText (0, 20,    0, StringBuffer_buffer("incoming asteroids"), 0xff);
-			RenderScreen_drawText (45, 28,    0, StringBuffer_buffer(""), 0xff);
+			RenderScreen_drawText (45, 28,    0, StringBuffer_new(), 0xff);
 			StringBuffer_amendDec(3-game.countdown/20);
 			game.countdown+=1;
 			if (game.countdown == 80) {
@@ -322,7 +360,7 @@ extern "C" {
 			StringBuffer_amendDec(game.countdown/20);
 			game.countdown-=1;
 			if (game.countdown == 0) {
-				asteroidsSetup(5);
+				nextLevel();
 				game.mode = GAME_MODE_PLAY;
 				setWarmupTimer();
 			}
@@ -331,7 +369,7 @@ extern "C" {
 			//StringBuffer_amendDec(asteroidsCount);
 		}
 
-		if (leftButton == 2 || rightButton == 2) {
+		if ((leftButton == 2 || rightButton == 2)) {
 			game.mode = GAME_MODE_PAUSE;
 		}
 	}
@@ -352,8 +390,8 @@ extern "C" {
   			RenderScreen_drawText (13, 40, 0, StringBuffer_buffer("press button"), 0xff);
   		RenderScreen_drawText (13, 40+8, 0, StringBuffer_buffer("  to start  "), 0xff);
   		RenderScreen_drawText (2, 40+16, 0, StringBuffer_buffer("tinyduinogames.de"), 0xff);
-		if (leftButton || rightButton) {
-			asteroidsSetup(2);
+		if (leftButton == 2 || rightButton == 2) {
+			asteroidsSetup();
 			game.mode = GAME_MODE_PLAY;
 			setWarmupTimer();
 		}
@@ -365,11 +403,12 @@ extern "C" {
 		static unsigned int frameCount = 0;
 		if (!init) {
 			init = 1;
-			asteroidsSetup(0);
+			asteroidsSetup();
 		}
+		random(); // makes further random calls time based
 		frameCount+=1;
 		switch (game.mode) {
-			case GAME_MODE_DIED: break;
+			case GAME_MODE_DIED: asteroidsGameDiedMode(); break;
 			case GAME_MODE_PLAY: asteroidsGamePlayLoop(); break;
 			case GAME_MODE_STARTSCREEN: asteroidsGameStartScreen(frameCount); break;
 			case GAME_MODE_PAUSE: asteroidsGamePauseLoop(); break;
