@@ -16,12 +16,10 @@ an interface to draw efficiently as well as easily on the screen.*
 
 * Include everything into the main file via #include
 	* The compiler can optimize the code better when everything is in one file
-	* The code execution is significantly faster - calling externally defined functions is expensive
+	* The code execution is significantly faster - calling externally defined functions is expensive. Yes, this is a violation of common 
+	  programming practices. The gained performance and memory saving however is worth the hazzle. 
 * Avoid C++
 	* ... I am simply not experienced enough at writing C++ code
 	* it's easy to waste precious flash memory for a bit more comfort
 	* I have saved quite some memory by porting existing code into plain C code, thus gaining the attitude that it might be worth the effort
-
-
-
-
+* Declare functions as static - faster to call and smaller memory footprint
