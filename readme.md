@@ -23,3 +23,13 @@ an interface to draw efficiently as well as easily on the screen.*
 	* it's easy to waste precious flash memory for a bit more comfort
 	* I have saved quite some memory by porting existing code into plain C code, thus gaining the attitude that it might be worth the effort
 * Declare functions as static - faster to call and smaller memory footprint
+
+# Rendering engine
+
+The most important aspect of this code is to provide a rendering engine. Being able
+to draw shapes and texures on the TinyScreen is at the core of the code.
+
+## Reason
+
+The rendering works as it works because of the challenges that the TinyScreen API
+is posing. 
