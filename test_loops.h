@@ -1,4 +1,4 @@
-#define LOOP_PROG loopSimpleTownMoveTest
+#define LOOP_PROG loopCircles
 
 #include "images_test.h"
 #include "images_grasstile.h"
@@ -15,6 +15,10 @@ void loopRects() {
       }
     }
   }
+}
+
+void loopCircles() {
+  RenderScreen_drawCircle(32,32,(micros()>>17)%240+10,0xff);
 }
 
 static const char simpleTownMapData[] PROGMEM = {
