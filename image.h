@@ -6,7 +6,7 @@ typedef struct ImageInclude_s {
 	const short transparentIndex;
 } ImageInclude;
 
-static void ImageInclude_readLineInto(const ImageInclude *img, unsigned char *lineBuffer, 
+static void ImageInclude_readLineInto(const ImageInclude *img, unsigned char *lineBuffer,
 	unsigned char start, unsigned char end, unsigned char imgY, unsigned char imgX)
 {
 	unsigned char width = pgm_read_byte(&img->width);
@@ -30,7 +30,7 @@ static void ImageInclude_readLineInto(const ImageInclude *img, unsigned char *li
 	} else {
 		for (int p=start,n=imgX;p<end;n+=1,p+=1) {
 			if (n == width) n = 0;
-			unsigned char c = pgm_read_byte(offset+n);
+			unsigned char c = pgm_read_byte((void*)(offset+n));
 			if (c != transparentIndex) lineBuffer[p] = c;
 		}
 	}
@@ -44,7 +44,7 @@ static void ImageInclude_readTileMapInto(const ImageInclude *img, unsigned char 
 {
 	unsigned char width = pgm_read_byte(&img->width);
 	unsigned int data = pgm_read_word(&img->data);
-	
+
 	unsigned char x = 0;
 	unsigned char step = 1<<uvShiftX;
 	while (x<96) {

@@ -94,13 +94,13 @@ extern "C" {
   static void TinyScreenC_setY(uint8_t, uint8_t);
   static void TinyScreenC_goTo(uint8_t x, uint8_t y);
   //I2C GPIO related
-  uint8_t TinyScreenC_getButtons(void);
+  static uint8_t TinyScreenC_getButtons(void);
   static void TinyScreenC_writeGPIO(uint8_t, uint8_t);
   //font
   static void TinyScreenC_setFont(const FONT_INFO&);
   static void TinyScreenC_setCursor(uint8_t, uint8_t);
   static void TinyScreenC_fontColor(uint8_t, uint8_t);
-  size_t TinyScreenC_write(uint8_t);
+  static size_t TinyScreenC_write(uint8_t);
   
   #define xMax 95
   #define yMax 63
@@ -171,7 +171,7 @@ extern "C" {
     TinyScreenC_writeGPIO(GPIO_RegData,GPIO_TRANSFER_END);
   }
   
-  uint8_t TinyScreenC_getButtons(void) {
+  static uint8_t TinyScreenC_getButtons(void) {
     Wire.beginTransmission(0x20);
     Wire.write(GPIO_RegData);
     Wire.endTransmission();
@@ -501,7 +501,7 @@ extern "C" {
     _fontBGcolor=g;
   }
   
-  size_t TinyScreenC_write(uint8_t ch){
+  static size_t TinyScreenC_write(uint8_t ch){
     if(!_fontFirstCh)return 1;
     if(ch<_fontFirstCh || ch>_fontLastCh)return 1;
     if(_cursorX>xMax || _cursorY>yMax)return 1;
