@@ -8,8 +8,8 @@ extern "C" {
 #define RENDERCOMMAND_TSTAR 3
 #define RENDERCOMMAND_TTEXT 4
 
-#define RENDERCOMMAND_COLORED 0x10
-#define RENDERCOMMAND_TEXTURED 0x20
+#define RENDERCOMMAND_COLORED 0
+#define RENDERCOMMAND_TEXTURED 1
 
 #define RENDERSCREEN_MAX_COMMANDS 60
 #define RENDERSCREEN_WIDTH 96
@@ -21,8 +21,9 @@ extern "C" {
 
   
   typedef struct RenderCommand_s {
-    unsigned char type, color, nextIndex;
-    union {
+    unsigned type:4, texture:4;
+    unsigned char color, nextIndex;
+    union { 
       struct {
         // rect
         unsigned char x1, y1, w, y2;
@@ -59,7 +60,7 @@ extern "C" {
   typedef struct RenderScreen_s {
     const ImageInclude *imageIncludes[RENDERSCREEN_TEXTURE_COUNT];
     const FONT_INFO *fontFormats[RENDERSCREEN_TEXT_FORMAT_COUNT];
-    RenderTileMapData *tileMap;
+    RenderTileMapData tileMap[RENDERSCREEN_TILEMAP_COUNT];
     RenderCommand commands[RENDERSCREEN_MAX_COMMANDS];
     unsigned char commandCount;
     unsigned char flags;
@@ -80,6 +81,7 @@ extern "C" {
     if (y < 0) v = -y, y = 0;
     RenderCommand *command = &_renderScreen.commands[_renderScreen.commandCount++];
     command->type = RENDERCOMMAND_TRECT;
+    command->texture = RENDERCOMMAND_COLORED;
     command->color = color;
     command->rect.x1 = x;
     command->rect.y1 = y;
@@ -92,7 +94,7 @@ extern "C" {
 
   static RenderCommand* RenderScreen_drawRectTextured (int x, int y, int w, int h, unsigned char imageId) {
     RenderCommand *cmd = RenderScreen_drawRect(x,y,w,h,imageId);
-    if (cmd) cmd->type|=RENDERCOMMAND_TEXTURED;
+    if (cmd) cmd->texture = RENDERCOMMAND_TEXTURED;
     return cmd;
   }
 
@@ -110,6 +112,7 @@ extern "C" {
     if (x + r <= 0 || x-r >= RENDERSCREEN_WIDTH || y + r <= 0 || y - r >= RENDERSCREEN_HEIGHT) return;
     RenderCommand *command = &_renderScreen.commands[_renderScreen.commandCount++];
     command->type = RENDERCOMMAND_TCIRCLE;
+    command->texture = RENDERCOMMAND_COLORED;
     command->color = color;
     command->circle.x = x;
     command->circle.y = y;
@@ -126,6 +129,7 @@ extern "C" {
     if (y + info->height < 0) return;
     RenderCommand *command = &_renderScreen.commands[_renderScreen.commandCount++];
     command->type = RENDERCOMMAND_TTEXT;
+    command->texture = RENDERCOMMAND_COLORED;
     command->color = color;
     command->text.x = x;
     command->text.y = y;
@@ -173,8 +177,8 @@ extern "C" {
 
 
   static char RenderScreen_fillLine(RenderCommand *command,char y,unsigned char lineBuffer[RENDERSCREEN_WIDTH]) {
-    unsigned char t = command->type & 0xf;
-    unsigned char fill = command->type & 0xf0;
+    unsigned char t = command->type;
+    unsigned char fill = command->texture;
     if (t == RENDERCOMMAND_TRECT) {
       if (y >= command->rect.y1 && y<command->rect.y2) {
         if (fill == 0) {
@@ -233,7 +237,7 @@ extern "C" {
 
 #define RENDERSCREEN_SLICE 15
   static char RenderScreen_onVLine(RenderCommand *command, char y) {
-    unsigned char t = command->type & 0xf;
+    unsigned char t = command->type;
     if (t == RENDERCOMMAND_TRECT) {
       if (y + RENDERSCREEN_SLICE < command->rect.y1) return -1;
       if (y >= command->rect.y2) return 1;
