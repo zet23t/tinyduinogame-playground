@@ -17,7 +17,7 @@ extern "C" {
 #define RENDERSCREEN_HEIGHT 64
 
 #define RENDERSCREEN_TEXT_FORMAT_COUNT 1
-#define RENDERSCREEN_TILEMAP_COUNT 1
+#define RENDERSCREEN_TILEMAP_COUNT 2
 #define RENDERSCREEN_TEXTURE_COUNT 8
 
   
@@ -51,10 +51,11 @@ extern "C" {
   typedef struct RenderTileMapData_s
   {
     unsigned char *dataMap;
-    unsigned char tileSizeX;
-    unsigned char tileSizeY;
+    unsigned char tileSizeXBits;
+    unsigned char tileSizeYBits;
     unsigned char dataMapWidth;
     unsigned char dataMapHeight;
+    unsigned char imageId;
   } RenderTileMapData;
   #define RENDERSCREEN_FLAG_NOCLEAR 1
 
@@ -95,6 +96,10 @@ extern "C" {
 
   static RenderCommand* RenderScreen_drawRectTextured (int x, int y, int w, int h, unsigned char imageId) {
     return RenderScreen_drawRect(x,y,w,h,imageId, RENDERCOMMAND_TEXTURED);
+  }
+
+  static RenderCommand* RenderScreen_drawRectTileMap (int x, int y, int w, int h, unsigned char tilemapId) {
+    return RenderScreen_drawRect(x,y,w,h,tilemapId, RENDERCOMMAND_TILEMAP);
   }
 
   static void RenderScreen_drawRectTexturedUV (int x, int y, int w, int h, unsigned char imageId, int u, int v) {
@@ -180,11 +185,41 @@ extern "C" {
     unsigned char fill = command->texture;
     if (t == RENDERCOMMAND_TRECT) {
       if (y >= command->rect.y1 && y<command->rect.y2) {
-        if (fill == 0) {
+        if (fill == RENDERCOMMAND_COLORED) {
           memset(&lineBuffer[command->rect.x1],command->fill,command->rect.w);
         } else if (fill == RENDERCOMMAND_TEXTURED) {
           ImageInclude_readLineInto(_renderScreen.imageIncludes[command->fill], lineBuffer, 
             command->rect.x1, command->rect.x1+command->rect.w, y - command->rect.y1 + command->rect.v, command->rect.u);
+        } else if (fill == RENDERCOMMAND_TILEMAP) {
+          RenderTileMapData *tilemapdata = &_renderScreen.tileMap[command->fill];
+          const ImageInclude *img = _renderScreen.imageIncludes[tilemapdata->imageId];
+          unsigned char mapY = (y - command->rect.y1 + command->rect.v) >> tilemapdata->tileSizeYBits;
+          unsigned char mapX = 0;
+          unsigned char mapYOff = mapY * tilemapdata->dataMapWidth;
+          unsigned char mapUV = tilemapdata->dataMap[mapX + mapYOff];
+          unsigned char mapU = mapUV & 0xf;
+          unsigned char mapV = mapUV >> 4;
+          unsigned char v = ((y - command->rect.y1 + command->rect.v) & ((1 << tilemapdata->tileSizeYBits) - 1));
+          unsigned char voff = (mapV << tilemapdata->tileSizeYBits);
+          unsigned char u = (command->rect.u & ((1<<tilemapdata->tileSizeXBits) - 1));
+          unsigned char uoff = (mapU << tilemapdata->tileSizeXBits);
+          unsigned char x1=command->rect.x1;
+          unsigned char x2 =  command->rect.x1+command->rect.w;
+          while (x1 < x2) {
+            unsigned char rest = 16 - u;
+            unsigned char to = x1+rest;
+            if (to > x2) to = x2;
+            ImageInclude_readLineInto(img, lineBuffer, x1, to, v+voff, u+uoff);
+            mapX +=1;
+            if (mapX >= tilemapdata->dataMapWidth) mapX = 0;
+            mapUV = tilemapdata->dataMap[mapX + mapYOff];
+            mapU = mapUV & 0xf;
+            mapV = mapUV >> 4;
+            uoff = (mapU << tilemapdata->tileSizeXBits);
+            voff = (mapV << tilemapdata->tileSizeYBits);
+            x1 += rest;
+            u = 0;
+          }
         }
       }
       return command->rect.y2 <= y;

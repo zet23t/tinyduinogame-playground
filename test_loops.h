@@ -1,4 +1,5 @@
-#define LOOP_PROG loopCircles
+#define LOOP_PROG loopTileMapTownMoveTest
+#define SHOW_FPS 1
 
 #include "images_test.h"
 #include "images_grasstile.h"
@@ -20,6 +21,7 @@ void loopRects() {
 void loopCircles() {
   RenderScreen_drawCircle(32,32,(micros()>>17)%240+10,0xff);
 }
+
 
 static const char simpleTownMapData[] PROGMEM = {
   0x10,0x11,0x10,0x10, 0x10,0x10,0x10,0x10, 0x10,0x10,0x10,0x10, 0x10,0x10,0x10,0x10,
@@ -45,18 +47,44 @@ static const char simpleTownMapDataLayer[] PROGMEM = {
 };
 static unsigned int simpleTownMapPosX;
 static unsigned int simpleTownMapPosY;
-int loopSimpleTownMoveTest() {
+
+void townTestTick() {
   _renderScreen.flags|=RENDERSCREEN_FLAG_NOCLEAR;
-  int n = 0;
   _renderScreen.imageIncludes[0] = &_image_tileset_opaque;
   _renderScreen.imageIncludes[1] = &_image_tileset;
   
   simpleTownMapPosX += rightStick.normX >>4;
   simpleTownMapPosY += rightStick.normY >>4;
+}
+
+int loopTileMapTownMoveTest() {
+  static unsigned char dataMap[] = {
+    0x00, 0x01,0x00,0x02, 0x00, 0x00,
+    0x10, 0x11,0x11,0x10, 0x11, 0x10,
+    0x00, 0x01,0x00,0x03, 0x01, 0x04,
+    0x08, 0x08,0x08,0x08, 0x08, 0x08,
+  };
+  townTestTick();
+  _renderScreen.tileMap[0].tileSizeXBits = 4;
+  _renderScreen.tileMap[0].tileSizeYBits = 4;
+  _renderScreen.tileMap[0].dataMapWidth = 6;
+  _renderScreen.tileMap[0].dataMapHeight = 4;
+  _renderScreen.tileMap[0].dataMap = dataMap;
+  _renderScreen.tileMap[0].imageId = 0;
+
   char screenX = -((simpleTownMapPosX >> 4)&0xf);
   char screenY = -((simpleTownMapPosY >> 4)&0xf);
-  char limy = micros()/500000%6;
-  char limx = micros()/500000%9;
+  RenderScreen_drawRectTileMap(screenX,screenY,96,64,0);
+
+  return 0;
+}
+
+int loopSimpleTownMoveTest() {
+  int n = 0;
+  townTestTick();
+
+  char screenX = -((simpleTownMapPosX >> 4)&0xf);
+  char screenY = -((simpleTownMapPosY >> 4)&0xf);
   for (char y = 0;y<5;y+=1) {
     unsigned char mapY = ((simpleTownMapPosY >> 8) + y)&0x7;
     for (char x = 0;x<7;x+=1) {
