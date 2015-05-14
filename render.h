@@ -205,11 +205,13 @@ extern "C" {
           unsigned char uoff = (mapU << tilemapdata->tileSizeXBits);
           unsigned char x1=command->rect.x1;
           unsigned char x2 =  command->rect.x1+command->rect.w;
+          ImageIncludeDrawData drawData;
+          ImageInclude_prepare(img, &drawData);
           while (x1 < x2) {
             unsigned char rest = 16 - u;
             unsigned char to = x1+rest;
             if (to > x2) to = x2;
-            ImageInclude_readLineInto(img, lineBuffer, x1, to, v+voff, u+uoff);
+            ImageInclude_readLineIntoPrepared(img, &drawData, lineBuffer, x1, to, v+voff, u+uoff);
             mapX +=1;
             if (mapX >= tilemapdata->dataMapWidth) mapX = 0;
             mapUV = tilemapdata->dataMap[mapX + mapYOff];
