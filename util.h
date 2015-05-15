@@ -38,6 +38,51 @@ extern "C" {
 		}
 	}
 
+	/** Modifies a rectangular character array in a way that values are shifted left/right.
+	 * The encoding in the array is expected to be "index = x + y * width". Step can be any
+	 * positive / negative value.
+	 */
+	static void CharArray_shiftX(unsigned char *data, unsigned char width, unsigned char height, char step) {
+		if (step == 0) return;
+		unsigned char row[width];
+		step = (step + width) % width;
+		for (unsigned char y=0;y<height;y+=1) {
+			unsigned int offset = width * y;
+			memcpy(row,&data[offset+step],width-step);
+			memcpy(&row[width-step],&data[offset],step);
+			memcpy(&data[offset],row,width);
+		}
+	}
+
+	/** Modifies a rectangular character array in a way that values are shifted up/down.
+	 * The encoding in the array is expected to be "index = x + y * width".
+	 * The step value must be -1 or 1 - different values are not supported right now.
+	 */
+	static void CharArray_shiftY(unsigned char *data, unsigned char width, unsigned char height, char step) {
+		if (step != 1 && step != -1) return;
+		unsigned char row[width];
+		char dir = step < 0 ? -1 : 1;
+		step = (step + height) % height;
+		unsigned int stepOffset = width * step;
+		unsigned int size = width * height;
+		if (dir > 0) {
+			memcpy(row, data, width);
+			for (unsigned char y=0;y<height;y+=1) {
+				unsigned int offset = width * y;
+				unsigned int srcPos = (offset + stepOffset)%size;
+				memcpy(&data[offset],srcPos ? &data[srcPos] : row, width);
+			}
+		} else {
+			unsigned int rowPos = size - width;
+			memcpy(row, &data[rowPos], width);
+			for (unsigned char y=height-1;y!=0xff;y-=1) {
+				unsigned int offset = width * y;
+				unsigned int srcPos = (offset + stepOffset)%size;
+				memcpy(&data[offset],srcPos != rowPos ? &data[srcPos] : row, width);
+			}
+		}
+	}
+
 	static void StringBuffer_amendDec(long i) {
 		char const digit[] = "0123456789";
 	    char* p = &_stringBuffer.buffer[--_stringBuffer.posPointer];

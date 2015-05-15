@@ -58,23 +58,36 @@ void townTestTick() {
 }
 
 int loopTileMapTownMoveTest() {
-  static unsigned char dataMap[] = {
-    0x00, 0x01,0x00,0x02, 0x00, 0x00,
-    0x10, 0x11,0x11,0x10, 0x11, 0x10,
-    0x00, 0x01,0x00,0x03, 0x01, 0x04,
-    0x08, 0x08,0x08,0x08, 0x08, 0x08,
-  };
   townTestTick();
+  static unsigned char dataMap[] = {
+    0x00, 0x01,0x00,0x02, 0x00, 0x00,0x04,
+    0x10, 0x11,0x11,0x10, 0x11, 0x10,0x10,
+    0x00, 0x01,0x00,0x03, 0x01, 0x04,0x03,
+    0x08, 0x08,0x08,0x08, 0x08, 0x08,0x08,
+    0x10, 0x11,0x11,0x10, 0x11, 0x10,0x10,
+  };
+  static unsigned int prevPosX = 0;
+  static unsigned int prevPosY = 0;
+  unsigned int px = simpleTownMapPosX >> 8;
+  unsigned int py = simpleTownMapPosY >> 8;
+  if (px != prevPosX) {
+    CharArray_shiftX(dataMap, 7,5, px-prevPosX);
+    prevPosX = px;
+  }
+  if (py != prevPosY) {
+    CharArray_shiftY(dataMap,7,5,py - prevPosY);
+    prevPosY = py;
+  }
   _renderScreen.tileMap[0].tileSizeXBits = 4;
   _renderScreen.tileMap[0].tileSizeYBits = 4;
-  _renderScreen.tileMap[0].dataMapWidth = 6;
-  _renderScreen.tileMap[0].dataMapHeight = 4;
+  _renderScreen.tileMap[0].dataMapWidth = 7;
+  _renderScreen.tileMap[0].dataMapHeight = 5;
   _renderScreen.tileMap[0].dataMap = dataMap;
   _renderScreen.tileMap[0].imageId = 0;
 
   char screenX = -((simpleTownMapPosX >> 4)&0xf);
   char screenY = -((simpleTownMapPosY >> 4)&0xf);
-  RenderScreen_drawRectTileMap(screenX,screenY,96,64,0);
+  RenderScreen_drawRectTileMap(screenX,screenY,96+16,64+16,0);
 
   return 0;
 }
