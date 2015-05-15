@@ -211,7 +211,8 @@ extern "C" {
             unsigned char rest = 16 - u;
             unsigned char to = x1+rest;
             if (to > x2) to = x2;
-            ImageInclude_readLineIntoPrepared(img, &drawData, lineBuffer, x1, to, v+voff, u+uoff);
+            if (mapUV != 0xff)
+              ImageInclude_readLineIntoPrepared(img, &drawData, lineBuffer, x1, to, v+voff, u+uoff);
             mapX +=1;
             if (mapX >= tilemapdata->dataMapWidth) mapX = 0;
             mapUV = tilemapdata->dataMap[mapX + mapYOff];
