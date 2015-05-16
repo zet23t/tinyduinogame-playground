@@ -194,23 +194,29 @@ extern "C" {
     unsigned char *dataRef = &tilemapdata->dataMap[mapYOff];
     unsigned char v = ((y - command->rect.y1 + command->rect.v) & ((1 << ybits) - 1));
     unsigned char u = (command->rect.u & (tilewidth - 1));
-    unsigned char mapX = 0;
+    unsigned char mapX = command->rect.u >> xbits;
     unsigned char mapUV = dataRef[mapX];
     unsigned char x1 = command->rect.x1;
     const unsigned char x2 = x1+command->rect.w;
     ImageIncludeDrawData drawData;
     ImageInclude_prepare(img, &drawData);
     unsigned char rest = tilewidth - u;
-    #define FILL_TILEMAPLINE \
-    if (mapUV != 0xff) { \
-      unsigned char to = (x1 + rest); \
-      if (to > x2) to = x2; \
-      unsigned char uoff = ((mapUV & 0xf) << xbits); \
-      unsigned char voff = ((mapUV >> 4) << ybits); \
+
+    // this piece of code is used two times - first time before the loop and
+    // then inside the loop. This is due to the fact that if it's just in the
+    // loop, a condition that is only needed for the first iteration is 
+    // repeated through all iterations, which worses the overall performance
+    // This costs roughly 40 extra bytes of instructions
+    #define FILL_TILEMAPLINE                                                                                    \
+    if (mapUV != 0xff) {                                                                                        \
+      unsigned char to = (x1 + rest);                                                                           \
+      if (to > x2) to = x2;                                                                                     \
+      unsigned char uoff = ((mapUV & 0xf) << xbits);                                                            \
+      unsigned char voff = ((mapUV >> 4) << ybits);                                                             \
       ImageInclude_readLineIntoPrepared(img, &drawData, lineBuffer, x1, to, v+((mapUV >> 4) << ybits), u+uoff); \
-      x1 = to; \
-    } else { \
-      x1 += rest; \
+      x1 = to;                                                                                                  \
+    } else {                                                                                                    \
+      x1 += rest;                                                                                               \
     }
 
     FILL_TILEMAPLINE
