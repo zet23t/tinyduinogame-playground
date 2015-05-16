@@ -195,26 +195,28 @@ extern "C" {
         } else if (fill == RENDERCOMMAND_TILEMAP) {
           RenderTileMapData *tilemapdata = &_renderScreen.tileMap[command->fill];
           const ImageInclude *img = _renderScreen.imageIncludes[tilemapdata->imageId];
-          unsigned char tilewidth = 1<<tilemapdata->tileSizeXBits;
+          unsigned char xbits = tilemapdata->tileSizeXBits;
+          unsigned char ybits = tilemapdata->tileSizeYBits;
+          unsigned char tilewidth = 1<<xbits;
 
-          unsigned char mapY = (y - command->rect.y1 + command->rect.v) >> tilemapdata->tileSizeYBits;
+          unsigned char mapY = (y - command->rect.y1 + command->rect.v) >> ybits;
           unsigned char mapX = 0;
           unsigned char mapYOff = mapY * tilemapdata->dataMapWidth;
           unsigned char *dataRef = &tilemapdata->dataMap[mapYOff];
           unsigned char mapUV = dataRef[mapX];
-          unsigned char v = ((y - command->rect.y1 + command->rect.v) & ((1 << tilemapdata->tileSizeYBits) - 1));
+          unsigned char v = ((y - command->rect.y1 + command->rect.v) & ((1 << ybits) - 1));
           unsigned char u = (command->rect.u & (tilewidth - 1));
           unsigned char x1 = command->rect.x1;
           unsigned char x2 = command->rect.x1+command->rect.w;
           ImageIncludeDrawData drawData;
           ImageInclude_prepare(img, &drawData);
+          unsigned char rest = tilewidth - u;
           while (x1 < x2) {
-            unsigned char rest = tilewidth - u;
             if (mapUV != 0xff) {
               unsigned char to = x1 + rest;
               if (to > x2) to = x2;
-              unsigned char uoff = ((mapUV & 0xf) << tilemapdata->tileSizeXBits);
-              unsigned char voff = ((mapUV >> 4) << tilemapdata->tileSizeYBits);
+              unsigned char uoff = ((mapUV & 0xf) << xbits);
+              unsigned char voff = ((mapUV >> 4) << ybits);
               ImageInclude_readLineIntoPrepared(img, &drawData, lineBuffer, x1, to, v+voff, u+uoff);
             }
             mapX +=1;
@@ -222,6 +224,7 @@ extern "C" {
             mapUV = dataRef[mapX];
             x1 += rest;
             u = 0;
+            rest = tilewidth;
           }
         }
       }
