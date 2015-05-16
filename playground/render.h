@@ -188,9 +188,9 @@ extern "C" {
     const unsigned char xbits = tilemapdata->tileSizeXBits;
     const unsigned char ybits = tilemapdata->tileSizeYBits;
     const unsigned char tilewidth = 1<<xbits;
-
+    const unsigned char dataMapWidth = tilemapdata->dataMapWidth;
     const unsigned char mapY = (y - command->rect.y1 + command->rect.v) >> ybits;
-    const unsigned char mapYOff = mapY * tilemapdata->dataMapWidth;
+    const unsigned char mapYOff = mapY * dataMapWidth;
     unsigned char *dataRef = &tilemapdata->dataMap[mapYOff];
     unsigned char v = ((y - command->rect.y1 + command->rect.v) & ((1 << ybits) - 1));
     unsigned char u = (command->rect.u & (tilewidth - 1));
@@ -201,22 +201,27 @@ extern "C" {
     ImageIncludeDrawData drawData;
     ImageInclude_prepare(img, &drawData);
     unsigned char rest = tilewidth - u;
-    while (x1 < x2) {
-      if (mapUV != 0xff) {
-        unsigned char to = x1 + rest;
-        if (to > x2) to = x2;
-        unsigned char uoff = ((mapUV & 0xf) << xbits);
-        unsigned char voff = ((mapUV >> 4) << ybits);
-        ImageInclude_readLineIntoPrepared(img, &drawData, lineBuffer, x1, to, v+voff, u+uoff);
-        x1 = to;
-      } else {
-        x1 += rest;
-      }
-      if (++mapX >= tilemapdata->dataMapWidth) mapX = 0;
-      mapUV = dataRef[mapX];
-      u = 0;
-      rest = tilewidth;
+    #define FILL_TILEMAPLINE \
+    if (mapUV != 0xff) { \
+      unsigned char to = (x1 + rest); \
+      if (to > x2) to = x2; \
+      unsigned char uoff = ((mapUV & 0xf) << xbits); \
+      unsigned char voff = ((mapUV >> 4) << ybits); \
+      ImageInclude_readLineIntoPrepared(img, &drawData, lineBuffer, x1, to, v+((mapUV >> 4) << ybits), u+uoff); \
+      x1 = to; \
+    } else { \
+      x1 += rest; \
     }
+
+    FILL_TILEMAPLINE
+    u = 0;
+    rest = tilewidth;
+    while (x1 < x2) {
+      if (++mapX >= dataMapWidth) mapX = 0;
+      mapUV = dataRef[mapX];
+      FILL_TILEMAPLINE
+    }
+    #undef FILL_TILEMAPLINE
   }
 
   static char RenderScreen_fillLine(RenderCommand *command,char y,unsigned char lineBuffer[RENDERSCREEN_WIDTH]) {
