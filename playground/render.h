@@ -218,11 +218,12 @@ extern "C" {
               unsigned char uoff = ((mapUV & 0xf) << xbits);
               unsigned char voff = ((mapUV >> 4) << ybits);
               ImageInclude_readLineIntoPrepared(img, &drawData, lineBuffer, x1, to, v+voff, u+uoff);
+              x1 = to;
+            } else {
+              x1 += rest;
             }
-            mapX +=1;
-            if (mapX >= tilemapdata->dataMapWidth) mapX = 0;
+            if (++mapX >= tilemapdata->dataMapWidth) mapX = 0;
             mapUV = dataRef[mapX];
-            x1 += rest;
             u = 0;
             rest = tilewidth;
           }
