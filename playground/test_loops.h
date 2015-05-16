@@ -1,10 +1,7 @@
 #define LOOP_PROG loopTileMapTownMoveTest
 #define SHOW_FPS 1
 
-#include "images_test.h"
-#include "images_grasstile.h"
-#include "images_ground_mud.h"
-#include "images_tileset.h"
+#include "images.h"
 
 void loopRects() {
   for (int r = 0; r < 4;r+=1) {
