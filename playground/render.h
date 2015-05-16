@@ -10,19 +10,20 @@ extern "C" {
 
 #define RENDERCOMMAND_COLORED 0
 #define RENDERCOMMAND_TEXTURED 1
+#define RENDERCOMMAND_TILEMAP 2
 
 #define RENDERSCREEN_MAX_COMMANDS 60
 #define RENDERSCREEN_WIDTH 96
 #define RENDERSCREEN_HEIGHT 64
 
 #define RENDERSCREEN_TEXT_FORMAT_COUNT 1
-#define RENDERSCREEN_TILEMAP_COUNT 1
+#define RENDERSCREEN_TILEMAP_COUNT 2
 #define RENDERSCREEN_TEXTURE_COUNT 8
 
   
   typedef struct RenderCommand_s {
     unsigned type:4, texture:4;
-    unsigned char color, nextIndex;
+    unsigned char fill, nextIndex;
     union { 
       struct {
         // rect
@@ -50,10 +51,11 @@ extern "C" {
   typedef struct RenderTileMapData_s
   {
     unsigned char *dataMap;
-    unsigned char tileSizeX;
-    unsigned char tileSizeY;
+    unsigned char tileSizeXBits;
+    unsigned char tileSizeYBits;
     unsigned char dataMapWidth;
     unsigned char dataMapHeight;
+    unsigned char imageId;
   } RenderTileMapData;
   #define RENDERSCREEN_FLAG_NOCLEAR 1
 
@@ -68,7 +70,7 @@ extern "C" {
 
   static RenderScreen _renderScreen;
 
-  static RenderCommand* RenderScreen_drawRect (int x, int y, int w, int h, int color) {
+  static RenderCommand* RenderScreen_drawRect (int x, int y, int w, int h, int fill, unsigned char fillType) {
     if (_renderScreen.commandCount >= RENDERSCREEN_MAX_COMMANDS) return 0;
     if (x>=RENDERSCREEN_WIDTH || y >= RENDERSCREEN_HEIGHT || w <= 0 || h <= 0) return 0;
     int x2 = x+w;
@@ -81,8 +83,8 @@ extern "C" {
     if (y < 0) v = -y, y = 0;
     RenderCommand *command = &_renderScreen.commands[_renderScreen.commandCount++];
     command->type = RENDERCOMMAND_TRECT;
-    command->texture = RENDERCOMMAND_COLORED;
-    command->color = color;
+    command->texture = fillType;
+    command->fill = fill;
     command->rect.x1 = x;
     command->rect.y1 = y;
     command->rect.w = x2-x;
@@ -93,9 +95,11 @@ extern "C" {
   }
 
   static RenderCommand* RenderScreen_drawRectTextured (int x, int y, int w, int h, unsigned char imageId) {
-    RenderCommand *cmd = RenderScreen_drawRect(x,y,w,h,imageId);
-    if (cmd) cmd->texture = RENDERCOMMAND_TEXTURED;
-    return cmd;
+    return RenderScreen_drawRect(x,y,w,h,imageId, RENDERCOMMAND_TEXTURED);
+  }
+
+  static RenderCommand* RenderScreen_drawRectTileMap (int x, int y, int w, int h, unsigned char tilemapId) {
+    return RenderScreen_drawRect(x,y,w,h,tilemapId, RENDERCOMMAND_TILEMAP);
   }
 
   static void RenderScreen_drawRectTexturedUV (int x, int y, int w, int h, unsigned char imageId, int u, int v) {
@@ -106,14 +110,14 @@ extern "C" {
     }
   }
 
-  static void RenderScreen_drawCircle (int x, int y, unsigned long r16, int color) {
+  static void RenderScreen_drawCircle (int x, int y, unsigned long r16, int fill) {
     if (_renderScreen.commandCount >= RENDERSCREEN_MAX_COMMANDS) return;
     int r = r16 >> 4;
     if (x + r <= 0 || x-r >= RENDERSCREEN_WIDTH || y + r <= 0 || y - r >= RENDERSCREEN_HEIGHT) return;
     RenderCommand *command = &_renderScreen.commands[_renderScreen.commandCount++];
     command->type = RENDERCOMMAND_TCIRCLE;
     command->texture = RENDERCOMMAND_COLORED;
-    command->color = color;
+    command->fill = fill;
     command->circle.x = x;
     command->circle.y = y;
     command->circle.r = r;
@@ -122,7 +126,7 @@ extern "C" {
     command->circle.r2 = r2;
   }
 
-  static void RenderScreen_drawText (int x, int y, unsigned char fontIndex, char *string, unsigned char color) {
+  static void RenderScreen_drawText (int x, int y, unsigned char fontIndex, char *string, unsigned char fill) {
     if (_renderScreen.commandCount >= RENDERSCREEN_MAX_COMMANDS) return;
     if (y >= RENDERSCREEN_HEIGHT || x >= RENDERSCREEN_WIDTH) return;
     const FONT_INFO *info = _renderScreen.fontFormats[fontIndex];
@@ -130,14 +134,14 @@ extern "C" {
     RenderCommand *command = &_renderScreen.commands[_renderScreen.commandCount++];
     command->type = RENDERCOMMAND_TTEXT;
     command->texture = RENDERCOMMAND_COLORED;
-    command->color = color;
+    command->fill = fill;
     command->text.x = x;
     command->text.y = y;
     command->text.fontIndex = fontIndex;
     command->text.str = string;
   }
   
-  static void RenderScreen_putString(char y, char fontX, char fontY, const char * string, const FONT_INFO *fontInfo, unsigned char *lineBuffer, unsigned char color)
+  static void RenderScreen_putString(char y, char fontX, char fontY, const char * string, const FONT_INFO *fontInfo, unsigned char *lineBuffer, unsigned char fill)
   {
     uint8_t fontHeight = fontInfo->height;
     //if(y >= fontY && y < fontY + fontHeight) // checked in caller already
@@ -164,7 +168,7 @@ extern "C" {
           {
             if((data & (0x80 >> i)) && fontX >= 0)
             {
-              lineBuffer[fontX] = color;
+              lineBuffer[fontX] = fill;
             }
             ++fontX;
           }
@@ -181,11 +185,44 @@ extern "C" {
     unsigned char fill = command->texture;
     if (t == RENDERCOMMAND_TRECT) {
       if (y >= command->rect.y1 && y<command->rect.y2) {
-        if (fill == 0) {
-          memset(&lineBuffer[command->rect.x1],command->color,command->rect.w);
+        if (fill == RENDERCOMMAND_COLORED) {
+          memset(&lineBuffer[command->rect.x1],command->fill,command->rect.w);
         } else if (fill == RENDERCOMMAND_TEXTURED) {
-          ImageInclude_readLineInto(_renderScreen.imageIncludes[command->color], lineBuffer, 
+          ImageInclude_readLineInto(_renderScreen.imageIncludes[command->fill], lineBuffer, 
             command->rect.x1, command->rect.x1+command->rect.w, y - command->rect.y1 + command->rect.v, command->rect.u);
+        } else if (fill == RENDERCOMMAND_TILEMAP) {
+          RenderTileMapData *tilemapdata = &_renderScreen.tileMap[command->fill];
+          const ImageInclude *img = _renderScreen.imageIncludes[tilemapdata->imageId];
+          unsigned char mapY = (y - command->rect.y1 + command->rect.v) >> tilemapdata->tileSizeYBits;
+          unsigned char mapX = 0;
+          unsigned char mapYOff = mapY * tilemapdata->dataMapWidth;
+          unsigned char mapUV = tilemapdata->dataMap[mapX + mapYOff];
+          unsigned char mapU = mapUV & 0xf;
+          unsigned char mapV = mapUV >> 4;
+          unsigned char v = ((y - command->rect.y1 + command->rect.v) & ((1 << tilemapdata->tileSizeYBits) - 1));
+          unsigned char voff = (mapV << tilemapdata->tileSizeYBits);
+          unsigned char u = (command->rect.u & ((1<<tilemapdata->tileSizeXBits) - 1));
+          unsigned char uoff = (mapU << tilemapdata->tileSizeXBits);
+          unsigned char x1=command->rect.x1;
+          unsigned char x2 =  command->rect.x1+command->rect.w;
+          ImageIncludeDrawData drawData;
+          ImageInclude_prepare(img, &drawData);
+          while (x1 < x2) {
+            unsigned char rest = 16 - u;
+            unsigned char to = x1+rest;
+            if (to > x2) to = x2;
+            if (mapUV != 0xff)
+              ImageInclude_readLineIntoPrepared(img, &drawData, lineBuffer, x1, to, v+voff, u+uoff);
+            mapX +=1;
+            if (mapX >= tilemapdata->dataMapWidth) mapX = 0;
+            mapUV = tilemapdata->dataMap[mapX + mapYOff];
+            mapU = mapUV & 0xf;
+            mapV = mapUV >> 4;
+            uoff = (mapU << tilemapdata->tileSizeXBits);
+            voff = (mapV << tilemapdata->tileSizeYBits);
+            x1 += rest;
+            u = 0;
+          }
         }
       }
       return command->rect.y2 <= y;
@@ -202,7 +239,7 @@ extern "C" {
         if (tox > RENDERSCREEN_WIDTH) tox = RENDERSCREEN_WIDTH;
         if (startx < 0) startx = 0;
         int dx;
-        unsigned char color = command->color;
+        unsigned char fill = command->fill;
         char firstHit = 0;
         for (int sx = startx; sx < tox;++sx) {
           dx = sx - x;
@@ -211,12 +248,12 @@ extern "C" {
             if (firstHit == 0 && dx < 0) {
               unsigned char fillUpTo = x - dx + 1;
               if (fillUpTo > RENDERSCREEN_WIDTH) fillUpTo = RENDERSCREEN_WIDTH;
-              memset(&lineBuffer[sx],color,fillUpTo-sx);
+              memset(&lineBuffer[sx],fill,fillUpTo-sx);
               sx = fillUpTo - 1; 
             } else 
             {
 
-              lineBuffer[sx] = color;
+              lineBuffer[sx] = fill;
             }
             firstHit = 1;
           } else if (firstHit) break;
@@ -229,7 +266,7 @@ extern "C" {
       if (y < command->text.y) return 0;
       const FONT_INFO *fontInfo = _renderScreen.fontFormats[command->text.fontIndex];
       if (y >= command->text.y + fontInfo->height) return 1;
-      RenderScreen_putString(y, command->text.x, command->text.y, command->text.str, fontInfo, lineBuffer, command->color);
+      RenderScreen_putString(y, command->text.x, command->text.y, command->text.str, fontInfo, lineBuffer, command->fill);
       return 0;
     }
     return 1;
