@@ -58,6 +58,7 @@ extern "C" {
     unsigned char imageId;
   } RenderTileMapData;
   #define RENDERSCREEN_FLAG_NOCLEAR 1
+  #define RENDERSCREEN_FLAG_CLEARBITMAP 2
 
   typedef struct RenderScreen_s {
     const ImageInclude *imageIncludes[RENDERSCREEN_TEXTURE_COUNT];
@@ -66,6 +67,7 @@ extern "C" {
     RenderCommand commands[RENDERSCREEN_MAX_COMMANDS];
     unsigned char commandCount;
     unsigned char flags;
+    unsigned char clearFill;
   } RenderScreen;
 
   static RenderScreen _renderScreen;
@@ -304,9 +306,27 @@ extern "C" {
     TinyScreenC_goTo(0, 0);
     TinyScreenC_startData();
     unsigned char clear = (_renderScreen.flags & RENDERSCREEN_FLAG_NOCLEAR) == 0;
+    unsigned char clearBitmap = (_renderScreen.flags & RENDERSCREEN_FLAG_CLEARBITMAP) != 0;
+    ImageIncludeDrawData clearDrawData;
+    const ImageInclude *clearImg;
+    if (clearBitmap) {
+      clearImg = _renderScreen.imageIncludes[_renderScreen.clearFill];
+      ImageInclude_prepare(clearImg, &clearDrawData);
+    }
     unsigned char first; // position of first element in the list that's in the current slice
     for (char i = 0; i < RENDERSCREEN_HEIGHT; i += 1) {
-      if (clear) memset(lineBuffer, 0, RENDERSCREEN_WIDTH);
+      if (clear) {
+        memset(lineBuffer, _renderScreen.clearFill, RENDERSCREEN_WIDTH);
+      } else if(clearBitmap) {
+        unsigned char y = i % clearDrawData.height;
+        unsigned char x = clearDrawData.width;
+        ImageInclude_readLineIntoPrepared(clearImg, &clearDrawData, lineBuffer, 0, clearDrawData.width, y, 0);
+        while (x < 64) {
+          memcpy(&lineBuffer[x],lineBuffer,x);
+          x *= 2;
+        }
+        memcpy(&lineBuffer[64],lineBuffer,32);
+      }
       #ifdef RENDERSCREEN_BENCH
       unsigned char n = 0;
       #endif
