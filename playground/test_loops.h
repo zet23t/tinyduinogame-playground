@@ -59,25 +59,39 @@ void townTestTick() {
 
 int loopTileMapTownMoveTest() {
   townTestTick();
+  // ground map (opaque)
   static unsigned char dataMap[] = {
-    0xff, 0x01,0x00,0x02, 0x00, 0x00,0x04,
+    0x00, 0x01,0x00,0x02, 0x00, 0x00,0x04,
     0x10, 0x11,0x11,0x10, 0x11, 0x10,0x10,
     0x00, 0x01,0x00,0x03, 0x01, 0x04,0x03,
     0x08, 0x08,0x08,0x08, 0x08, 0x08,0x08,
     0x10, 0x11,0x11,0x10, 0x11, 0x10,0x10,
   };
+  // map with overlay items on top of the map
+  static unsigned char dataMapOverlay[] = {
+    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+    0xff, 0xff, 0x12, 0xff, 0xff, 0xff, 0xff,
+    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+  };
   static unsigned int prevPosX = 0;
   static unsigned int prevPosY = 0;
   unsigned int px = simpleTownMapPosX >> 8;
   unsigned int py = simpleTownMapPosY >> 8;
+  // move array content horizontally if needed
   if (px != prevPosX) {
     CharArray_shiftX(dataMap, 7,5, px-prevPosX);
+    CharArray_shiftX(dataMapOverlay, 7,5, px-prevPosX);
     prevPosX = px;
   }
+  // move array content vertically if needed
   if (py != prevPosY) {
     CharArray_shiftY(dataMap,7,5,py - prevPosY);
+    CharArray_shiftY(dataMapOverlay,7,5,py - prevPosY);
     prevPosY = py;
   }
+
   _renderScreen.tileMap[0].tileSizeXBits = 4;
   _renderScreen.tileMap[0].tileSizeYBits = 4;
   _renderScreen.tileMap[0].dataMapWidth = 7;
@@ -85,9 +99,19 @@ int loopTileMapTownMoveTest() {
   _renderScreen.tileMap[0].dataMap = dataMap;
   _renderScreen.tileMap[0].imageId = 0;
 
+  _renderScreen.tileMap[1].tileSizeXBits = 4;
+  _renderScreen.tileMap[1].tileSizeYBits = 4;
+  _renderScreen.tileMap[1].dataMapWidth = 7;
+  _renderScreen.tileMap[1].dataMapHeight = 5;
+  _renderScreen.tileMap[1].dataMap = dataMapOverlay;
+  _renderScreen.tileMap[1].imageId = 1;
+
   char screenX = -((simpleTownMapPosX >> 4)&0xf);
   char screenY = -((simpleTownMapPosY >> 4)&0xf);
+  // draw background opaque tilemap
   RenderScreen_drawRectTileMap(screenX,screenY,96+16,64+16,0);
+  // draw foreground transparent tilemap
+  RenderScreen_drawRectTileMap(screenX,screenY,96+16,64+16,1);
 
   return 0;
 }
