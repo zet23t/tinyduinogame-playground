@@ -200,30 +200,26 @@ extern "C" {
           unsigned char mapY = (y - command->rect.y1 + command->rect.v) >> tilemapdata->tileSizeYBits;
           unsigned char mapX = 0;
           unsigned char mapYOff = mapY * tilemapdata->dataMapWidth;
-          unsigned char mapUV = tilemapdata->dataMap[mapX + mapYOff];
-          unsigned char mapU = mapUV & 0xf;
-          unsigned char mapV = mapUV >> 4;
+          unsigned char *dataRef = &tilemapdata->dataMap[mapYOff];
+          unsigned char mapUV = dataRef[mapX];
           unsigned char v = ((y - command->rect.y1 + command->rect.v) & ((1 << tilemapdata->tileSizeYBits) - 1));
-          unsigned char voff = (mapV << tilemapdata->tileSizeYBits);
           unsigned char u = (command->rect.u & (tilewidth - 1));
-          unsigned char uoff = (mapU << tilemapdata->tileSizeXBits);
-          unsigned char x1=command->rect.x1;
-          unsigned char x2 =  command->rect.x1+command->rect.w;
+          unsigned char x1 = command->rect.x1;
+          unsigned char x2 = command->rect.x1+command->rect.w;
           ImageIncludeDrawData drawData;
           ImageInclude_prepare(img, &drawData);
           while (x1 < x2) {
             unsigned char rest = tilewidth - u;
-            unsigned char to = x1+rest;
-            if (to > x2) to = x2;
-            if (mapUV != 0xff)
+            if (mapUV != 0xff) {
+              unsigned char to = x1 + rest;
+              if (to > x2) to = x2;
+              unsigned char uoff = ((mapUV & 0xf) << tilemapdata->tileSizeXBits);
+              unsigned char voff = ((mapUV >> 4) << tilemapdata->tileSizeYBits);
               ImageInclude_readLineIntoPrepared(img, &drawData, lineBuffer, x1, to, v+voff, u+uoff);
+            }
             mapX +=1;
             if (mapX >= tilemapdata->dataMapWidth) mapX = 0;
-            mapUV = tilemapdata->dataMap[mapX + mapYOff];
-            mapU = mapUV & 0xf;
-            mapV = mapUV >> 4;
-            uoff = (mapU << tilemapdata->tileSizeXBits);
-            voff = (mapV << tilemapdata->tileSizeYBits);
+            mapUV = dataRef[mapX];
             x1 += rest;
             u = 0;
           }
