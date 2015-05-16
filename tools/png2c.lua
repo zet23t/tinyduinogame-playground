@@ -1,7 +1,11 @@
 require "gd"
 local lfs = require "lfs"
+local headfp = assert(io.open(".git/HEAD"))
+local branch = headfp:read "*a":match("([^/]-)%s*$")
+headfp:close()
 
-local outfile = "playground/images.h"
+
+local outfile = "playground/images_"..branch..".h"
 local out = assert(io.open(outfile,"w"))
 
 out:write [[
