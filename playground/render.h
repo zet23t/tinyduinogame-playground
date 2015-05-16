@@ -193,6 +193,8 @@ extern "C" {
         } else if (fill == RENDERCOMMAND_TILEMAP) {
           RenderTileMapData *tilemapdata = &_renderScreen.tileMap[command->fill];
           const ImageInclude *img = _renderScreen.imageIncludes[tilemapdata->imageId];
+          unsigned char tilewidth = 1<<tilemapdata->tileSizeXBits;
+
           unsigned char mapY = (y - command->rect.y1 + command->rect.v) >> tilemapdata->tileSizeYBits;
           unsigned char mapX = 0;
           unsigned char mapYOff = mapY * tilemapdata->dataMapWidth;
@@ -201,14 +203,14 @@ extern "C" {
           unsigned char mapV = mapUV >> 4;
           unsigned char v = ((y - command->rect.y1 + command->rect.v) & ((1 << tilemapdata->tileSizeYBits) - 1));
           unsigned char voff = (mapV << tilemapdata->tileSizeYBits);
-          unsigned char u = (command->rect.u & ((1<<tilemapdata->tileSizeXBits) - 1));
+          unsigned char u = (command->rect.u & (tilewidth - 1));
           unsigned char uoff = (mapU << tilemapdata->tileSizeXBits);
           unsigned char x1=command->rect.x1;
           unsigned char x2 =  command->rect.x1+command->rect.w;
           ImageIncludeDrawData drawData;
           ImageInclude_prepare(img, &drawData);
           while (x1 < x2) {
-            unsigned char rest = 16 - u;
+            unsigned char rest = tilewidth - u;
             unsigned char to = x1+rest;
             if (to > x2) to = x2;
             if (mapUV != 0xff)
