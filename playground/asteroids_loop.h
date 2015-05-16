@@ -2,7 +2,7 @@
 #define LOOP_PROG asteroidsLoop
 #define COOLDOWN_DELAY 8
 
-#include "asteroids_tileset.h"
+#include "images_asteroids.h"
 extern "C" {
 
 	typedef struct Ship_s {
