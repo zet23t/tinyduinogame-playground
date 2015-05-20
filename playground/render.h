@@ -68,6 +68,8 @@ extern "C" {
     unsigned char commandCount;
     unsigned char flags;
     unsigned char clearFill;
+    unsigned char clearFillOffsetX;
+    unsigned char clearFillOffsetY;
   } RenderScreen;
 
   static RenderScreen _renderScreen;
@@ -228,6 +230,7 @@ extern "C" {
       FILL_TILEMAPLINE
     }
     #undef FILL_TILEMAPLINE
+
   }
 
   static char RenderScreen_fillLine(RenderCommand *command,char y,unsigned char lineBuffer[RENDERSCREEN_WIDTH]) {
@@ -333,9 +336,10 @@ extern "C" {
       if (clear) {
         memset(lineBuffer, _renderScreen.clearFill, RENDERSCREEN_WIDTH);
       } else if(clearBitmap) {
-        unsigned char y = i % clearDrawData.height;
+        unsigned char y = (i + _renderScreen.clearFillOffsetY) % clearDrawData.height;
         unsigned char x = clearDrawData.width;
-        ImageInclude_readLineIntoPrepared(clearImg, &clearDrawData, lineBuffer, 0, clearDrawData.width, y, 0);
+        ImageInclude_readLineIntoPrepared(clearImg, &clearDrawData, lineBuffer, 0, clearDrawData.width, y, 
+            _renderScreen.clearFillOffsetX % clearDrawData.width);
         while (x < 64) {
           memcpy(&lineBuffer[x],lineBuffer,x);
           x *= 2;
