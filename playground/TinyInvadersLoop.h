@@ -246,7 +246,7 @@ extern "C" {
 		stepMonsters();
 		char *str = StringBuffer_new();
 		StringBuffer_amendLoad(_string_gameover);
-		RenderScreen_drawText(20,30,0,str,0xff);
+		RenderScreen_drawText(20,10,0,str,0xff);
 	}
 
 	static void tinyInvadersLoop() {
