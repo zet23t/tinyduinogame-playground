@@ -6,3 +6,4 @@ const char _string_ms[] PROGMEM = "ms";
 
 const char _string_press_button[] PROGMEM = "press button";
 const char _string_gameover[] PROGMEM = "game over";
+const char _string_gamewon[] PROGMEM = "you won!";

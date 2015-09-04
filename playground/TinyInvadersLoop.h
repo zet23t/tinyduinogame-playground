@@ -33,6 +33,7 @@
 #define GAME_MODE_PAUSE 3
 #define GAME_MODE_GAMEOVER 4
 #define GAME_MODE_CREDITS 5
+#define GAME_MODE_WON 6
 
 extern "C" {
 	typedef struct Player_s {
@@ -165,6 +166,9 @@ extern "C" {
 			}
 			if (flip) increaseDifficulty();
 		}
+		if (game.monsterAliveCount) {
+			game.gameMode = GAME_MODE_WON;
+		}
 		//RenderScreen_drawRect(MAX_LEFT + (MAX_RIGHT - MAX_LEFT - MONSTER_ROW_WIDTH) / 2,5,
 		//	MONSTER_ROW_WIDTH,2,0xff,RENDERCOMMAND_COLORED);
 
@@ -248,6 +252,18 @@ extern "C" {
 			game.gameMode = GAME_MODE_START;
 		}	
 	}
+	static void gameWonLoop() {
+		game.frame += 1;
+		_renderScreen.clearFillOffsetX += ((game.frame % 8) == 0);
+		stepPlayer();
+		char *str = StringBuffer_new();
+		StringBuffer_amendLoad(_string_gamewon);
+		if ((game.frame>>3)%2 == 0)
+			RenderScreen_drawText(13,40,0,str,0xff);
+		if (leftButton == 1 || rightButton == 1) {
+			game.gameMode = GAME_MODE_START;
+		}	
+	}
 
 	static void tinyInvadersLoop() {
 		static char init = 0;
@@ -259,6 +275,7 @@ extern "C" {
 			case GAME_MODE_START: gameStartLoop(); break;
 			case GAME_MODE_PLAY: gamePlayLoop(); break;
 			case GAME_MODE_GAMEOVER: gameOverLoop(); break;
+			case GAME_MODE_WON: gameWonLoop();
 		}
 	}
 	
