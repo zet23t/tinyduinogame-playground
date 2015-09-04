@@ -1,5 +1,5 @@
 #include "images_tiny_invaders.h"
-#define SHOW_FPS 1
+//#define SHOW_FPS 0
 #define LOOP_PROG tinyInvadersLoop
 #define TILESET_SKY0 0
 #define TS_SPRITES 1
@@ -86,7 +86,8 @@ extern "C" {
 			row->isAliveBits = aliveBits;
 		}
 		game.monsterSpeed = 16;
-	}
+		game.gameMode = GAME_MODE_START;
+ 	}
 	static char shoot(char x, char y, char type) {
 		if (game.projectileCount >= MAX_PROJECTILE_COUNT) return 0;
 		Projectile *p = &game.projectiles[game.projectileCount++];
@@ -106,6 +107,7 @@ extern "C" {
 		if (game.monsterDanceDir == 0) game.monsterDanceDir = 1;
 		char minX = MAX_RIGHT;
 		char maxX = MAX_LEFT;
+		char maxY = 0;
 		for (char i=0; i < MONSTER_ROWS; i+=1) {
 			MonsterRow *row = &game.monsterRows[i];
 			char x = row->x - MONSTER_WIDTH/2;
@@ -116,6 +118,7 @@ extern "C" {
 				if (row->isAliveBits & (1<<j)) {
 					if (x < minX) minX = x;
 					if (x1 > maxX) maxX = x1;
+					if (y1 > maxY) maxY = y1;
 					game.monsterAliveCount+=1;
 					//RenderScreen_drawRect(x,row->y,5,5,0xff,RENDERCOMMAND_COLORED);
 					RenderScreen_drawRectTexturedUV(
@@ -140,6 +143,10 @@ extern "C" {
 				x1 += MONSTER_WIDTH + MONSTER_SPACING;
 				
 			}
+		}
+		if (maxY > PLAYER_SHIP_Y) {
+			game.gameMode = GAME_MODE_GAMEOVER;
+			return;
 		}
 		if (game.frame % game.monsterSpeed == 0) {
 			char flip = 0;
@@ -208,17 +215,51 @@ extern "C" {
 			PLAYER_SHIP_Y,PLAYER_SHIP_SIZE_X,PLAYER_SHIP_SIZE_Y,TS_SPRITES,0,0);
 	}
 
+	static void gamePlayLoop() {
+		game.frame += 1;
+		//RenderScreen_drawRectTexturedUV(0,0, 96,64,TILESET_SKY0,0,0);
+		stepPlayer();
+		stepMonsters();
+		stepProjectiles();
+	}
+
+	static void gameStartLoop() {
+		game.frame += 1;
+		_renderScreen.clearFillOffsetX += ((game.frame % 8) == 0);
+		if (leftButton == 1 || rightButton == 1) {
+			tinyInvadersSetup();
+			game.gameMode = GAME_MODE_PLAY;
+		}
+
+		char *str = StringBuffer_new();
+		StringBuffer_amendLoad(_string_press_button);
+		if ((game.frame>>4)%2 == 0)
+			RenderScreen_drawText(13,40,0,str,0xff);
+	}
+
+	static void gameOverLoop() {
+		game.frame += 1;
+		_renderScreen.clearFillOffsetX += ((game.frame % 8) == 0);
+		if (leftButton == 1 || rightButton == 1) {
+			game.gameMode = GAME_MODE_START;
+		}	
+		stepMonsters();
+		char *str = StringBuffer_new();
+		StringBuffer_amendLoad(_string_gameover);
+		RenderScreen_drawText(20,30,0,str,0xff);
+	}
+
 	static void tinyInvadersLoop() {
 		static char init = 0;
 		if (!init) {
 			init = 1;
 			tinyInvadersSetup();
 		}
-		game.frame += 1;
-		//RenderScreen_drawRectTexturedUV(0,0, 96,64,TILESET_SKY0,0,0);
-		stepPlayer();
-		stepMonsters();
-		stepProjectiles();
+		switch (game.gameMode) {
+			case GAME_MODE_START: gameStartLoop(); break;
+			case GAME_MODE_PLAY: gamePlayLoop(); break;
+			case GAME_MODE_GAMEOVER: gameOverLoop(); break;
+		}
 	}
 	
 }
