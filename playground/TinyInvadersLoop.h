@@ -168,6 +168,7 @@ extern "C" {
 		}
 		if (game.monsterAliveCount == 0) {
 			game.gameMode = GAME_MODE_WON;
+			game.frame = 0;
 		}
 		//RenderScreen_drawRect(MAX_LEFT + (MAX_RIGHT - MAX_LEFT - MONSTER_ROW_WIDTH) / 2,5,
 		//	MONSTER_ROW_WIDTH,2,0xff,RENDERCOMMAND_COLORED);
@@ -260,7 +261,7 @@ extern "C" {
 		StringBuffer_amendLoad(_string_gamewon);
 		if ((game.frame>>3)%2 == 0)
 			RenderScreen_drawText(13,40,0,str,0xff);
-		if (leftButton == 1 || rightButton == 1) {
+		if ((leftButton == 1 || rightButton == 1) && game.frame > 30) {
 			game.gameMode = GAME_MODE_START;
 		}	
 	}
@@ -275,7 +276,7 @@ extern "C" {
 			case GAME_MODE_START: gameStartLoop(); break;
 			case GAME_MODE_PLAY: gamePlayLoop(); break;
 			case GAME_MODE_GAMEOVER: gameOverLoop(); break;
-			case GAME_MODE_WON: gameWonLoop();
+			case GAME_MODE_WON: gameWonLoop(); break;
 		}
 	}
 	
