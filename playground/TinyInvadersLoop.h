@@ -166,7 +166,7 @@ extern "C" {
 			}
 			if (flip) increaseDifficulty();
 		}
-		if (game.monsterAliveCount) {
+		if (game.monsterAliveCount == 0) {
 			game.gameMode = GAME_MODE_WON;
 		}
 		//RenderScreen_drawRect(MAX_LEFT + (MAX_RIGHT - MAX_LEFT - MONSTER_ROW_WIDTH) / 2,5,
