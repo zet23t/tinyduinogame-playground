@@ -11,7 +11,7 @@
 
 #include "strings.h"
 
-#include "test_loops.h"
+#include "TinyInvadersLoop.h"
 
 unsigned char brightness = 8;
 void setup() {
