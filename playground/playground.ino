@@ -1,5 +1,6 @@
 
 #include <avr/pgmspace.h>
+#include <SPI.h>
 #include <Wire.h>
 #include "util.h"
 #include "joystick.h"
