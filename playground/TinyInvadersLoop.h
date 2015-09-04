@@ -240,13 +240,13 @@ extern "C" {
 	static void gameOverLoop() {
 		game.frame += 1;
 		_renderScreen.clearFillOffsetX += ((game.frame % 8) == 0);
-		if (leftButton == 1 || rightButton == 1) {
-			game.gameMode = GAME_MODE_START;
-		}	
 		stepMonsters();
 		char *str = StringBuffer_new();
 		StringBuffer_amendLoad(_string_gameover);
 		RenderScreen_drawText(20,10,0,str,0xff);
+		if (leftButton == 1 || rightButton == 1) {
+			game.gameMode = GAME_MODE_START;
+		}	
 	}
 
 	static void tinyInvadersLoop() {
