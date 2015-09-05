@@ -1,12 +1,15 @@
 #include "images_tiny_invaders.h"
 //#define SHOW_FPS 0
 #define LOOP_PROG tinyInvadersLoop
-#define TILESET_SKY0 0
+#define TS_SKY0 0
+#define TS_CLOUDS 4
 #define TS_SPRITES 1
+#define TS_CITYLAYER 2
+#define TS_ROADLAYER 3
 #define PLAYER_SHIP_Y 56
 #define PLAYER_SHIP_SIZE_X 7
 #define PLAYER_SHIP_SIZE_Y 7
-#define PLAYER_SHOOT_COOLDOWN 10
+#define PLAYER_SHOOT_COOLDOWN 15
 
 #define PROJECTILE_U 0
 #define PROJECTILE_V 7
@@ -35,6 +38,23 @@
 #define GAME_MODE_CREDITS 5
 #define GAME_MODE_WON 6
 
+#define EXPLOSION_SPRITE_U 25
+#define EXPLOSION_SPRITE_V 0
+#define EXPLOSION_SPRITE_W 6
+#define EXPLOSION_SPRITE_H 6
+#define EXPLOSION_SPRITE_N 4
+
+#define FIREWORKS_SPRITE_U 36
+#define FIREWORKS_SPRITE_V 6
+#define FIREWORKS_SPRITE_W 3
+#define FIREWORKS_SPRITE_H 3
+#define FIREWORKS_SPRITE_N 4
+
+#define SPRITE_TYPE_EXPLOSION 1
+#define SPRITE_TYPE_FIREWORKSHOT 2
+
+#define MAX_SPRITE_COUNT 16
+
 extern "C" {
 	typedef struct Player_s {
 		char x;
@@ -47,6 +67,19 @@ extern "C" {
 		char type;
 	} Projectile;
 
+	typedef struct SpriteAnim_s {
+		char x; 
+		char y;
+		char frame;
+		char type;
+		union {
+			struct {
+				char vx:4;
+				char vy:4;
+			};
+		};
+	} SpriteAnim;
+
 	typedef struct MonsterRow_s {
 		char x;
 		char y;
@@ -54,28 +87,35 @@ extern "C" {
 	} MonsterRow;
 
 	typedef struct Game_s {
-		unsigned frame;
+		unsigned int frame;
+		unsigned int parallax;
 		Player player;
 		unsigned char monsterAliveCount;
 		MonsterRow monsterRows[MONSTER_ROWS];
 		unsigned char monsterDanceDir;
+		unsigned char monsterMoveTimeSlit;
 		unsigned char monsterSpeed;
 		unsigned char projectileCount;
 		unsigned char killCount;
 		unsigned char gameMode;
+		unsigned char spriteCount;
+		SpriteAnim sprites[MAX_SPRITE_COUNT];
 		Projectile projectiles[MAX_PROJECTILE_COUNT];
 	} Game;
 
 	static Game game;
 
 	static void tinyInvadersSetup() {
-		_renderScreen.imageIncludes[TILESET_SKY0] = &_image_sky_background_opaque;
+		_renderScreen.imageIncludes[TS_SKY0] = &_image_sky_background_opaque;
 		_renderScreen.imageIncludes[TS_SPRITES] = &_image_tiny_invaders;
+		_renderScreen.imageIncludes[TS_ROADLAYER] = &_image_roadlayer_opaque;
+		_renderScreen.imageIncludes[TS_CITYLAYER] = &_image_citylayer;
+		_renderScreen.imageIncludes[TS_CLOUDS] = &_image_clouds;
 		memset(&game,0,sizeof(Game));
 		game.player.x = MAX_LEFT + (MAX_RIGHT - MAX_LEFT) / 2;
 
 		_renderScreen.flags |= RENDERSCREEN_FLAG_NOCLEAR|RENDERSCREEN_FLAG_CLEARBITMAP;
-		_renderScreen.clearFill = TILESET_SKY0;
+		_renderScreen.clearFill = TS_SKY0;
 
 
 		unsigned int aliveBits;
@@ -86,8 +126,86 @@ extern "C" {
 			row->y = i * (MONSTER_HEIGHT + MONSTER_SPACING) + 8;
 			row->isAliveBits = aliveBits;
 		}
-		game.monsterSpeed = 16;
+		game.monsterMoveTimeSlit = 16;
+		game.monsterSpeed = 1;
 		game.gameMode = GAME_MODE_START;
+ 	}
+
+ 	static SpriteAnim* spawnSprite(char x, char y, char type, char frame) {
+ 		if (game.spriteCount >= MAX_SPRITE_COUNT) return NULL;
+ 		SpriteAnim *anim = &game.sprites[game.spriteCount++];
+ 		memset(anim,0,sizeof(SpriteAnim));
+ 		anim->x = x;
+ 		anim->y = y;
+ 		anim->type = type;
+ 		anim->frame = frame;
+
+ 		return anim;
+ 	}
+
+ 	static SpriteAnim* spawnFirework(char x, char y) {
+ 		SpriteAnim *anim = spawnSprite(x,y,SPRITE_TYPE_FIREWORKSHOT,cheapRnd()%8);
+ 		if (anim) {
+ 			anim->vx = cheapRnd()%4-1;
+ 			anim->vy = cheapRnd()%4+1;
+ 		}
+ 	}
+
+ 	static void stepSprites() {
+ 		//char *chr = StringBuffer_new();
+ 		//StringBuffer_amendDec(game.spriteCount);
+ 		//RenderScreen_drawText(0,0,0,chr,0xff);
+ 		for (char i=game.spriteCount-1;i>=0;i-=1) {
+ 			SpriteAnim *anim = &game.sprites[i];
+ 			char del = 0;
+ 			char drawFrame = 0;
+ 			char u,v,w,h;
+ 			switch (anim->type & 0xf) {
+ 				case SPRITE_TYPE_EXPLOSION: 
+ 					drawFrame = (anim->frame >> 1);
+ 					del = (drawFrame >= EXPLOSION_SPRITE_N);
+ 					u = EXPLOSION_SPRITE_U;
+ 					v = EXPLOSION_SPRITE_V;
+ 					w = EXPLOSION_SPRITE_W;
+ 					h = EXPLOSION_SPRITE_H;
+ 					anim->y -= anim->vy;
+ 					anim->x += anim->vx;
+ 					if (anim->frame % 2 == 0 && anim->vy > 1) {
+ 						anim->vy-=1;
+ 					}
+ 					
+ 					anim->frame+=1;
+ 					break;
+ 				case SPRITE_TYPE_FIREWORKSHOT:
+ 					anim->y -= anim->vy;
+ 					if (anim->frame % 2 == 0 && anim->vy > 1) {
+ 						anim->vy-=1;
+ 					}
+ 					anim->x += anim->vx;
+ 					anim->frame +=1;
+ 					u = FIREWORKS_SPRITE_U;
+ 					v = FIREWORKS_SPRITE_V;
+ 					w = FIREWORKS_SPRITE_W;
+ 					h = FIREWORKS_SPRITE_H;
+ 					drawFrame = FIREWORKS_SPRITE_N - (anim->frame >> 2);
+ 					del = (drawFrame < 0);
+ 					if (del) {
+						SpriteAnim *e = spawnSprite(anim->x,anim->y,SPRITE_TYPE_EXPLOSION,0);
+						if (e) {
+							e->vx = anim->vx;
+							e->vy = anim->vy;
+						}
+ 					}
+ 					break;
+ 			}
+ 			if (!del) {
+ 				u += drawFrame * w;
+ 				RenderScreen_drawRectTexturedUV(anim->x - w/2, anim->y - h/2,w,h,TS_SPRITES,u,v);
+ 			} else {
+ 				game.sprites[i] = game.sprites[--game.spriteCount];
+ 			}
+
+ 		}
  	}
 	static char shoot(char x, char y, char type) {
 		if (game.projectileCount >= MAX_PROJECTILE_COUNT) return 0;
@@ -98,9 +216,12 @@ extern "C" {
 		return 1;
 	}
 	static void increaseDifficulty() {
-		if (game.monsterSpeed > 8) game.monsterSpeed /= 2;
-		else if (game.monsterSpeed > 4) game.monsterSpeed -= 2;
-		else if (game.monsterSpeed >= 2) game.monsterSpeed -= 1; 
+		if (game.monsterMoveTimeSlit > 8) game.monsterMoveTimeSlit /= 2;
+		else if (game.monsterMoveTimeSlit > 4) game.monsterMoveTimeSlit -= 2;
+		else if (game.monsterMoveTimeSlit >= 2) game.monsterMoveTimeSlit -= 1; 
+		else if (game.monsterSpeed < 8 && game.monsterAliveCount < 10) {
+			game.monsterSpeed += 1;
+		}
 	}
 
 	static void stepMonsters() {
@@ -134,6 +255,7 @@ extern "C" {
 							row->isAliveBits &= ~(1<<j);
 							game.projectiles[k] = game.projectiles[--game.projectileCount];
 							game.killCount += 1;
+							spawnSprite(x+MONSTER_WIDTH/2,y+MONSTER_HEIGHT/2,SPRITE_TYPE_EXPLOSION,0);
 							if (game.killCount % 2 == 0)
 								increaseDifficulty();
 							break;
@@ -149,7 +271,7 @@ extern "C" {
 			game.gameMode = GAME_MODE_GAMEOVER;
 			return;
 		}
-		if (game.frame % game.monsterSpeed == 0) {
+		if (game.frame % game.monsterMoveTimeSlit == 0) {
 			char flip = 0;
 			if (minX < MAX_LEFT) {
 				flip = 1;
@@ -161,7 +283,7 @@ extern "C" {
 			}
 			for (char i=0; i < MONSTER_ROWS; i+=1) {
 				MonsterRow *row = &game.monsterRows[i];
-				row->x += game.monsterDanceDir;
+				row->x += game.monsterDanceDir * (game.monsterSpeed >> 1 | 1);
 				row->y += flip;
 			}
 			if (flip) increaseDifficulty();
@@ -219,23 +341,42 @@ extern "C" {
 		RenderScreen_drawRectTexturedUV(game.player.x - (PLAYER_SHIP_SIZE_X/2),
 			PLAYER_SHIP_Y,PLAYER_SHIP_SIZE_X,PLAYER_SHIP_SIZE_Y,TS_SPRITES,0,0);
 	}
+	static void stepBackground(char moving) {
+		game.frame += 1;
+		game.parallax += moving ? 1 : 0;
+		_renderScreen.clearFillOffsetX = game.parallax>>4;
+		if (game.frame % 4 == 0) {
+			if (!moving) {
+				if (_renderScreen.clearFillOffsetY > 0) 
+					_renderScreen.clearFillOffsetY-=1;
+			} else {
+				if (_renderScreen.clearFillOffsetY < 64) 
+					_renderScreen.clearFillOffsetY+=1;
+			}
+		}
+		RenderScreen_drawRectTexturedUV(0,63-16-6,96,16,TS_CLOUDS,(game.parallax>>3)%_image_clouds.width,0);	
+		RenderScreen_drawRectTexturedUV(0,63-16,96,16,TS_CITYLAYER,(game.parallax>>2)%_image_citylayer.width,0);	
+		RenderScreen_drawRectTexturedUV(0,63,96,1,TS_ROADLAYER,(game.parallax)%32,0);	
+	}
+
 
 	static void gamePlayLoop() {
-		game.frame += 1;
-		//RenderScreen_drawRectTexturedUV(0,0, 96,64,TILESET_SKY0,0,0);
+		stepBackground(0);
+		//RenderScreen_drawRectTexturedUV(0,0, 96,64,TS_SKY0,0,0);
 		stepPlayer();
 		stepMonsters();
 		stepProjectiles();
+		stepSprites();
 	}
 
 	static void gameStartLoop() {
-		game.frame += 1;
-		_renderScreen.clearFillOffsetX += ((game.frame % 8) == 0);
+		stepBackground(1);
 		if (leftButton == 1 || rightButton == 1) {
 			tinyInvadersSetup();
 			game.gameMode = GAME_MODE_PLAY;
 		}
 
+		stepSprites();
 		char *str = StringBuffer_new();
 		StringBuffer_amendLoad(_string_press_button);
 		if ((game.frame>>4)%2 == 0)
@@ -243,9 +384,9 @@ extern "C" {
 	}
 
 	static void gameOverLoop() {
-		game.frame += 1;
-		_renderScreen.clearFillOffsetX += ((game.frame % 8) == 0);
+		stepBackground(1);
 		stepMonsters();
+		stepSprites();
 		char *str = StringBuffer_new();
 		StringBuffer_amendLoad(_string_gameover);
 		RenderScreen_drawText(20,10,0,str,0xff);
@@ -254,13 +395,16 @@ extern "C" {
 		}	
 	}
 	static void gameWonLoop() {
-		game.frame += 1;
-		_renderScreen.clearFillOffsetX += ((game.frame % 8) == 0);
+		stepBackground(1);
 		stepPlayer();
+		stepSprites();
+		if (cheapRnd() > (unsigned short)55000)
+			spawnFirework(16 + cheapRnd() % 64,52 - cheapRnd()%8);
+
 		char *str = StringBuffer_new();
 		StringBuffer_amendLoad(_string_gamewon);
 		if ((game.frame>>3)%2 == 0)
-			RenderScreen_drawText(13,40,0,str,0xff);
+			RenderScreen_drawText(23,40,0,str,0xff);
 		if ((leftButton == 1 || rightButton == 1) && game.frame > 30) {
 			game.gameMode = GAME_MODE_START;
 		}	
@@ -270,6 +414,7 @@ extern "C" {
 		static char init = 0;
 		if (!init) {
 			init = 1;
+			_renderScreen.clearFillOffsetY = 64;
 			tinyInvadersSetup();
 		}
 		switch (game.gameMode) {
