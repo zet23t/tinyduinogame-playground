@@ -219,7 +219,7 @@ extern "C" {
 		if (game.monsterMoveTimeSlit > 8) game.monsterMoveTimeSlit /= 2;
 		else if (game.monsterMoveTimeSlit > 4) game.monsterMoveTimeSlit -= 2;
 		else if (game.monsterMoveTimeSlit >= 2) game.monsterMoveTimeSlit -= 1; 
-		else if (game.monsterSpeed < 8 && game.monsterAliveCount < 10) {
+		else if (game.monsterSpeed < 16 && game.monsterAliveCount < 10) {
 			game.monsterSpeed += 1;
 		}
 	}
@@ -283,7 +283,7 @@ extern "C" {
 			}
 			for (char i=0; i < MONSTER_ROWS; i+=1) {
 				MonsterRow *row = &game.monsterRows[i];
-				row->x += game.monsterDanceDir * (game.monsterSpeed >> 1 | 1);
+				row->x += game.monsterDanceDir * ((game.frame % (game.monsterSpeed >> 1 | 1) != 0) + ((game.monsterSpeed >> 2) + 1));
 				row->y += flip;
 			}
 			if (flip) increaseDifficulty();
