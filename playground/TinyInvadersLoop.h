@@ -87,6 +87,7 @@ extern "C" {
 	} MonsterRow;
 
 	typedef struct Game_s {
+		unsigned char useJoystick;
 		unsigned int frame;
 		unsigned int parallax;
 		Player player;
@@ -335,10 +336,12 @@ extern "C" {
 		}
 	}
 	static void stepPlayer() {
-		char cmd = (rightStick.normX >> 2) + (leftStick.normX >> 2);
+		char cmd = game.useJoystick ? ((rightStick.normX >> 2) + (leftStick.normX >> 2)) : 0;
+		if (main.screenButtonState & SCREEN_BTN_BOTTOM_LEFT) cmd -= 1;
+		if (main.screenButtonState & SCREEN_BTN_BOTTOM_RIGHT) cmd += 1;
 		if (cmd > 0 && game.player.x < MAX_RIGHT) game.player.x+=1;
 		if (cmd < 0 && game.player.x > MAX_LEFT) game.player.x-=1;
-		if ((leftButton || rightButton) && game.player.cooldown == 0 
+		if ((leftButton || rightButton || main.screenButtonState & SCREEN_BTN_TOP) && game.player.cooldown == 0 
 				&& shoot(game.player.x,PLAYER_SHIP_Y,PROJECTILE_TYPE_PLAYER)) {
 			game.player.cooldown = PLAYER_SHOOT_COOLDOWN;
 
@@ -379,9 +382,13 @@ extern "C" {
 
 	static void gameStartLoop() {
 		stepBackground(1);
-		if (leftButton == 1 || rightButton == 1) {
+		if (leftButton == 1 || rightButton == 1 || main.screenButtonState & SCREEN_BTN_BOTTOM) {
 			tinyInvadersSetup();
 			game.gameMode = GAME_MODE_PLAY;
+			game.useJoystick = leftButton || rightButton;
+			main.handleBrightness = 0;
+		} else {
+			main.handleBrightness = 1;
 		}
 
 		stepSprites();
@@ -404,7 +411,7 @@ extern "C" {
 		char *str = StringBuffer_new();
 		StringBuffer_amendLoad(_string_gameover);
 		RenderScreen_drawText(20,10,0,str,0xff);
-		if ((leftButton == 1 || rightButton == 1) && game.frame > 30) {
+		if ((leftButton == 1 || rightButton == 1 || main.screenButtonState) && game.frame > 30) {
 			game.gameMode = GAME_MODE_START;
 		}	
 	}
@@ -419,7 +426,7 @@ extern "C" {
 		StringBuffer_amendLoad(_string_gamewon);
 		if ((game.frame>>3)%2 == 0)
 			RenderScreen_drawText(23,40,0,str,0xff);
-		if ((leftButton == 1 || rightButton == 1) && game.frame > 30) {
+		if ((leftButton == 1 || rightButton == 1 || main.screenButtonState) && game.frame > 30) {
 			game.gameMode = GAME_MODE_START;
 		}	
 	}

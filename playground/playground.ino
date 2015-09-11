@@ -33,10 +33,10 @@ void setup() {
 }
 void handleBrightness() {
   static char previous = 0,showTimeout = 0;
-  unsigned char b = TinyScreenC_getButtons();
-  if ((b&9) && !previous) {
-    if ((b&8) && brightness < 15) brightness+=1;
-    if ((b&1) && brightness > 0) brightness-=1;
+  unsigned char b = main.screenButtonState;
+  if ((b & SCREEN_BTN_TOP) && !previous) {
+    if ((b & SCREEN_BTN_TOP_RIGHT) && brightness < 15) brightness+=1;
+    if ((b & SCREEN_BTN_TOP_LEFT) && brightness > 0) brightness-=1;
     TinyScreenC_setBrightness(brightness);
     showTimeout = 40;
   }
