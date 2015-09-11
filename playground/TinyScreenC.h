@@ -26,6 +26,13 @@ The latest version of this library can be found at https://tiny-circuits.com/
 */
 
 #include "Arduino.h"
+#define SCREEN_BTN_BOTTOM_RIGHT 0x8
+#define SCREEN_BTN_BOTTOM_LEFT 0x1
+#define SCREEN_BTN_BOTTOM (SCREEN_BTN_BOTTOM_LEFT|SCREEN_BTN_BOTTOM_RIGHT)
+#define SCREEN_BTN_TOP_LEFT 0x2
+#define SCREEN_BTN_TOP_RIGHT 0x4
+#define SCREEN_BTN_TOP (SCREEN_BTN_TOP_LEFT|SCREEN_BTN_TOP_RIGHT)
+
 
 extern "C" {
     

@@ -11,6 +11,13 @@
 
 #include "strings.h"
 
+typedef struct Main_s {
+  char handleBrightness;
+  uint8_t screenButtonState;
+} Main;
+
+static Main main = {1};
+
 #include "TinyInvadersLoop.h"
 
 unsigned char brightness = 8;
@@ -52,8 +59,9 @@ void loop() {
   unsigned long start = micros();
   
   UpdateJoystick();
+  main.screenButtonState = TinyScreenC_getButtons();
   LOOP_PROG();
-  handleBrightness();
+  if (main.handleBrightness) handleBrightness();
   #ifdef SHOW_FPS
   char *fps = StringBuffer_new();
   StringBuffer_amendDec(msLast);
