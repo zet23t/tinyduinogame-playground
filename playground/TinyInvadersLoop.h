@@ -151,6 +151,15 @@ extern "C" {
  		}
  	}
 
+ 	static SpriteAnim* spawnExplosion(char x, char y, char vx, char vy) {
+ 		SpriteAnim *e = spawnSprite(x,y,SPRITE_TYPE_EXPLOSION,0);
+		if (e) {
+			e->vx = vx;
+			e->vy = vy;
+		}
+		return e;
+ 	}
+
  	static void stepSprites() {
  		//char *chr = StringBuffer_new();
  		//StringBuffer_amendDec(game.spriteCount);
@@ -190,11 +199,7 @@ extern "C" {
  					drawFrame = FIREWORKS_SPRITE_N - (anim->frame >> 2);
  					del = (drawFrame < 0);
  					if (del) {
-						SpriteAnim *e = spawnSprite(anim->x,anim->y,SPRITE_TYPE_EXPLOSION,0);
-						if (e) {
-							e->vx = anim->vx;
-							e->vy = anim->vy;
-						}
+ 						spawnExplosion(anim->x, anim->y,anim->vx, anim->vy);
  					}
  					break;
  			}
@@ -268,7 +273,10 @@ extern "C" {
 			}
 		}
 		if (maxY > PLAYER_SHIP_Y) {
-			game.gameMode = GAME_MODE_GAMEOVER;
+			if (game.gameMode != GAME_MODE_GAMEOVER) {
+				game.gameMode = GAME_MODE_GAMEOVER;
+				game.frame = 0;
+			}
 			return;
 		}
 		if (game.frame % game.monsterMoveTimeSlit == 0) {
@@ -377,20 +385,26 @@ extern "C" {
 		}
 
 		stepSprites();
+
+		RenderScreen_drawRectTexturedUV(6,8,84,33,TS_SPRITES,44,15);
+
 		char *str = StringBuffer_new();
 		StringBuffer_amendLoad(_string_press_button);
 		if ((game.frame>>4)%2 == 0)
-			RenderScreen_drawText(13,40,0,str,0xff);
+			RenderScreen_drawText(13,48,0,str,0xff);
 	}
 
 	static void gameOverLoop() {
+		if (cheapRnd() > (unsigned short)52000) {
+			spawnExplosion(4 + cheapRnd() % 90, 48 + cheapRnd()%16,0, 1);
+		}
 		stepBackground(1);
 		stepMonsters();
 		stepSprites();
 		char *str = StringBuffer_new();
 		StringBuffer_amendLoad(_string_gameover);
 		RenderScreen_drawText(20,10,0,str,0xff);
-		if (leftButton == 1 || rightButton == 1) {
+		if ((leftButton == 1 || rightButton == 1) && game.frame > 30) {
 			game.gameMode = GAME_MODE_START;
 		}	
 	}
